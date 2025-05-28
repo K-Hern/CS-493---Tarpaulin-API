@@ -1,0 +1,15 @@
+services:
+  db:
+    image:
+    environment:
+
+  api:
+    build: ./api/
+    ports:
+      - 8000:8000
+    environment:
+      # - STUFF
+    depends_on:
+      db:
+        condition: service_started
+    restart: on-failure
