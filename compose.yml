@@ -1,15 +1,46 @@
-services:
-  db:
-    image:
-    environment:
+version: '3.9'
 
+services:
   api:
-    build: ./api/
+    build:
+      context: ./tarpaulin
     ports:
-      - 8000:8000
-    environment:
-      # - STUFF
+      - "3000:3000"
     depends_on:
-      db:
-        condition: service_started
-    restart: on-failure
+      - redis
+      - mongo
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - MONGO_DB_NAME=tarpaulin
+      - MONGO_USER=root
+      - MONGO_PASSWORD=root
+    volumes:
+      - ./tarpaulin:/app
+    working_dir: /app
+    restart: always
+
+  redis:
+    build:
+      context: ./redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  mongo:
+    build:
+      context: ./mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+      - MONGO_INITDB_DATABASE=tarpaulin
+    restart: always
+
+volumes:
+  mongodb_data:
