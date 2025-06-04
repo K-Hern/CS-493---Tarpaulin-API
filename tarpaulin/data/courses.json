@@ -1,0 +1,34 @@
+[
+    {
+        "id": 0,
+        "subject": "CS",
+        "number": "493",
+        "title": "Cloud Application Development",
+        "term": "sp22",
+        "instructorid": 100
+    },
+    {
+        "id": 1,
+        "subject": "MTH",
+        "number": "341",
+        "title": "Linear Algebra I",
+        "term": "sp22",
+        "instructorid": 101
+    },
+    {
+        "id": 2,
+        "subject": "CS",
+        "number": "381",
+        "title": "Program Language Fundmentals",
+        "term": "wi22",
+        "instructorid": 100
+    },
+    {
+        "id": 3,
+        "subject": "CSS",
+        "number": "205",
+        "title": "Soil Science",
+        "term": "wi22",
+        "instructorid": 101
+    }
+]
