@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer-gridfs-storage": "^5.0.2"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
