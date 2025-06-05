@@ -1,78 +1,35 @@
 const { ObjectId } = require('mongodb')
-const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
+const { getDbReference } = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
-const { push_item } = require('../lib/rabbitmqProducer')
+const bcrypt = require('bcryptjs')
+const usersCollection = "users"
 
 /*
- * Schema describing required/optional fields of a photo object.
+ * Schema describing required/optional fields of a user object.
  */
-const UsersSchema = {
+const usersSchema = {
   name: { required: true },
   email: { required: true },
   password: { required: true },
   role: { required: true }
 }
-
-const imageTypes = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png'
-};
-
-exports.PhotoSchema = PhotoSchema
+exports.usersSchema = usersSchema
 
 /*
- * Executes a DB query to insert a new photo's metadata into the database.
+ * Executes a DB query to insert a new user into the database.
  */
-async function insertNewPhoto(req) {
-  metadata = extractValidFields(req.body, PhotoSchema)
-  metadata.businessId = new ObjectId(metadata.businessId)
-  metadata.extension = imageTypes[req.file.mimetype];
-  metadata.thumbId = new ObjectId(req.file._id)
+async function createNewUser(user_details) {
+  const new_user = extractValidFields(user_details, usersSchema);
+  new_user.password = await bcrypt.hash(new_user.password, 8);
   const db = getDbReference();
-  await db.collection('images.files').updateOne(
-    { _id: new ObjectId(req.file.id) },
-    { $set: { metadata: metadata } }
-  )
-  req.file.extension = metadata.extension;
-  push_item(`${req.file.id}.${metadata.extension}`)
+  await db.collection(usersCollection).insertOne(new_user);
   return
 }
-exports.insertNewPhoto = insertNewPhoto
+exports.createNewUser = createNewUser
 
-/*
- * Executes a DB query to delete a photo (both image and thumb) from the DB (
- both chunk and file)
- */
-async function deletePhoto(id) {
-  const image_bucket = getImagesBucket();
-  await image_bucket.delete(new ObjectId(id));
-  push_item(`DELETE ${id}`)
-  return
-}
-exports.deletePhoto = deletePhoto
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDetailsById(id, type) {
+async function getUser(email){
   const db = getDbReference();
-  const file = await db.collection(`${type}.files`).findOne({ _id: new ObjectId(
-  id) });
-  return file;
+  const user = db.collection(usersCollection).findOne({email: email})
+  return user;
 }
-exports.getPhotoDetailsById = getPhotoDetailsById
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDownloadStreamById(id, type) {
-  const bucket = (type == "images") ? getImagesBucket() : getThumbsBucket();
-  const download_stream = bucket.openDownloadStream(new ObjectId(id));
-  return download_stream; 
-}
-
-exports.getPhotoDownloadStreamById = getPhotoDownloadStreamById
+exports.getUser = getUser

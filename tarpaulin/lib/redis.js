@@ -8,7 +8,7 @@ const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = process.env.REDIS_PORT || '6379';
 
 const redisClient = redis.createClient({
-    url: `redis://${redisHost}:${redisPort}`
+  url: `redis://${redisHost}:${redisPort}`
 });
 
 const port = 8086;
@@ -37,25 +37,22 @@ async function rateLimit(req, res, next) {
   userToken.last_time = currentTime;
 
   if (userToken.token_count > 0) {
-        console.log(userToken);
-        userToken.token_count -= 1;
-        await redisClient.hSet(ip, userToken);
-        
-        next();
-    } else {
-        res.status(429).send("TOO MANY REQUESTS\n");
-    }
+    console.log(userToken);
+    userToken.token_count -= 1;
+    await redisClient.hSet(ip, userToken);
+    
+    next();
+  } else {
+    res.status(429).send("TOO MANY REQUESTS\n");
   }
-
-
+}
 
 app.get("/", rateLimit, async (req, res) => {
-    res.send("Here's some data!\n");
+  res.send("Here's some data!\n");
 });
-
 
 redisClient.connect().then(function () {
-app.listen(port, function () {
+  app.listen(port, function () {
     console.log("== Server listening on port", port);
-});
+  });
 });

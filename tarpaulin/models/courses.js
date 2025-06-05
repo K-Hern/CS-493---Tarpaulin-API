@@ -1,25 +1,20 @@
 const { ObjectId } = require('mongodb')
 const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
-const { push_item } = require('../lib/rabbitmqProducer')
 
 /*
- * Schema describing required/optional fields of a photo object.
+ * Schema describing required/optional fields of a courses object.
  */
-const usersSchema = {
-  name: { required: true },
-  email: { required: true },
-  password: { required: true },
-  role: { required: true }
+const coursesSchema = {
+  subject: { required: true },
+  number: { required: true },
+  title: { required: true },
+  term: { required: true },
+  instructorid:{ required: true }
 }
+exports.coursesSchema = coursesSchema
 
-const imageTypes = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png'
-};
-
-exports.PhotoSchema = PhotoSchema
-
+//TO DO: change to insert new course
 /*
  * Executes a DB query to insert a new photo's metadata into the database.
  */
@@ -56,10 +51,9 @@ exports.deletePhoto = deletePhoto
  * Returns a Promise that resolves to an object containing the requested
  * photo.
  */
-async function getPhotoDetailsById(id, type) {
+async function getPhotoDetailsById(id) {
   const db = getDbReference();
-  const file = await db.collection(`${type}.files`).findOne({ _id: new ObjectId(
-  id) });
+  const file = await db.collection(`submission.files`).findOne({ _id: new ObjectId(id) });
   return file;
 }
 exports.getPhotoDetailsById = getPhotoDetailsById

@@ -1,5 +1,6 @@
 module.exports = {
 
+  // Returns a boolean
   validateAgainstSchema: function (obj, schema) {
     return obj && Object.keys(schema).every(
       field => !schema[field].required || obj[field] != undefined

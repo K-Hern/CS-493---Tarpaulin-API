@@ -1,30 +1,23 @@
 const { ObjectId } = require('mongodb')
 const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
-const { push_item } = require('../lib/rabbitmqProducer')
 
 /*
- * Schema describing required/optional fields of a photo object.
+ * Schema describing required/optional fields of a submission object.
  */
-const SubmissionSchema = {
-  subject: { required: true },
-  number: { required: true },
-  title: { required: true },
-  term: { required: true },
-  instructorId: { required: true }
+const submissionSchema = {
+  assignmentId: { required: true },
+  studentId: { required: true },
+  timestamp: { required: true },
+  grade: { required: true },
+  file: { required: true }
 }
-
-const imageTypes = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png'
-};
-
-exports.PhotoSchema = PhotoSchema
+exports.submissionSchema = submissionSchema
 
 /*
  * Executes a DB query to insert a new photo's metadata into the database.
  */
-async function insertNewPhoto(req) {
+async function createNewAssignment(req) {
   metadata = extractValidFields(req.body, PhotoSchema)
   metadata.businessId = new ObjectId(metadata.businessId)
   metadata.extension = imageTypes[req.file.mimetype];
@@ -39,41 +32,3 @@ async function insertNewPhoto(req) {
   return
 }
 exports.insertNewPhoto = insertNewPhoto
-
-/*
- * Executes a DB query to delete a photo (both image and thumb) from the DB (
- both chunk and file)
- */
-async function deletePhoto(id) {
-  const image_bucket = getImagesBucket();
-  await image_bucket.delete(new ObjectId(id));
-  push_item(`DELETE ${id}`)
-  return
-}
-exports.deletePhoto = deletePhoto
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDetailsById(id, type) {
-  const db = getDbReference();
-  const file = await db.collection(`${type}.files`).findOne({ _id: new ObjectId(
-  id) });
-  return file;
-}
-exports.getPhotoDetailsById = getPhotoDetailsById
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDownloadStreamById(id, type) {
-  const bucket = (type == "images") ? getImagesBucket() : getThumbsBucket();
-  const download_stream = bucket.openDownloadStream(new ObjectId(id));
-  return download_stream; 
-}
-
-exports.getPhotoDownloadStreamById = getPhotoDownloadStreamById

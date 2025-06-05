@@ -3,25 +3,18 @@
  */
 
 const { Router } = require('express')
-const multer = require('multer');
-const { images_storage, imageFilter } = require('../lib/mongo')
 const { validateAgainstSchema } = require('../lib/validation')
-const { } = require('../models/users');
-
+const bcrypt = require('bcryptjs')
+const { usersSchema } = require('../models/users');
 const router = Router()
-const images_upload = multer({ storage: images_storage, fileFilter: imageFilter });
 
 // Create a new User.
 router.post('/', async (req, res, next) => {
-  // Select fields before entry to deter auth elevations
-  const new_user = {
-    name: req.body.name,
-    email: req.body.email,
-    password: req.body.password
+  if (!validateAgainstSchema(req.body, usersSchema)){
+    return res.status(400).send({error: "invalid user fields"})
   }
-
   try {
-    const user = await User.create(new_user, UserClientFields)
+    const user = await createNewUser(req.body)
     res.status(201).send({ id: user.id })
   } catch (e) {
     if (e instanceof ValidationError) {
@@ -30,17 +23,51 @@ router.post('/', async (req, res, next) => {
       throw e
     }
   }
-
 })
 
 // Log in a User.
 router.post('/login', async (req, res, next) => {
+  const user = await getUser(req.body.email);
+  if (user) {
+    if (await bcrypt.compare(req.body.password, user.password)){
 
-})  
+      const payload = {
+        sub: user.userId,
+        user: user.email,
+        role: user.role
+      };
+
+      const expiration = { expiresIn: "24h" };
+      const user_token = jwt.sign(payload, process.env.JWT_SECRET_KEY, expiration);
+
+      const response = {
+        status: "ok",
+        token: user_token,
+        valid: "24h"
+      }
+
+      res.status(200);
+      res.send(response);
+      return;
+    }
+  }
+  
+  res.status(401);
+  res.send("Invalid Credentials")
+  return;
+})
 
 // Fetch data about a specific User.
 router.get('/:id', async (req, res, next) => {
-
+  const user = await getUser(req.user.email);
+  if (user) {
+    const userObj = user.toJSON();
+    delete userObj.password;
+    res.status(200);
+    res.send(userObj);
+  } else {
+    next()
+  }
 })
 
 module.exports = router

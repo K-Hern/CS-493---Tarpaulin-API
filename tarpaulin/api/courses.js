@@ -3,11 +3,10 @@ const multer = require('multer');
 const { images_storage, imageFilter, getDbReference } = require('../lib/mongo')
 const { validateAgainstSchema } = require('../lib/validation')
 const { } = require('../models/users');
+const { } = require('../models/courses');
 
 const router = Router()
 const images_upload = multer({ storage: images_storage, fileFilter: imageFilter });
-
-
 
 // Fetch the list of all Courses.
 router.get('/', async (req, res, next) => {
@@ -39,22 +38,51 @@ router.get('/', async (req, res, next) => {
     .limit(numPerPage)
     .toArray();
 
-
+    // Send response
+    res.status(200).json({
+        courses: pageCourses,
+        page: page,
+        totalPages: lastPage,
+        pageSize: numPerPage,
+        totalCount: coursesNumber
+    });
 })
 
 // Create a new course.
 router.post('/', async (req, res, next) => {
 
+    //validate against schema
+    if (validateAgainstSchema(req.body, coursesSchema)) {
+
+        //extract fields
+        const course = extractValidFields(req.body, coursesSchema);
+
+        //call function to insert into database
+        insertNewCourse(course)
+
+    } else {
+        res.status(400).json({
+            error: "Request body is not a valid course object"
+        });
+    }
 })
 
 // Fetch data about a specific Course.
 router.get('/:id', async (req, res, next) => {
 
-})
+    // grab courseid from params
+    const courseid = parseInt(req.params.id);
+
+    // call function to grab course by id
+    course = await getCourseDetailsById(courseid);
+
+    //return course
+    res.status(200).send(course);
+});
 
 // Update data for a specific Course.
 router.patch('/:id', async (req, res, next) => {
-
+    
 })
 
 // Remove a specific Course from the database.

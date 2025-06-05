@@ -1,24 +1,17 @@
 const { ObjectId } = require('mongodb')
 const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
-const { push_item } = require('../lib/rabbitmqProducer')
 
 /*
- * Schema describing required/optional fields of a photo object.
+ * Schema describing required/optional fields of an assignment object.
  */
-const PhotoSchema = {
+const assignmentsSchema = {
   courseId: { required: true },
   title: { required: true },
   points: { required: true },
   due: { required: true }
 }
-
-const imageTypes = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png'
-};
-
-exports.PhotoSchema = PhotoSchema
+exports.assignmentsSchema = assignmentsSchema
 
 /*
  * Executes a DB query to insert a new photo's metadata into the database.
