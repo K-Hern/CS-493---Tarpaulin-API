@@ -10,24 +10,20 @@ const router = require('express').Router();
 //schema for validation? (I think we're not doing that correct?)
 
 // Create a new Assignment.
-router.post('/assignments', async (req, res, next) => {})
-
+router.post('/', async (req, res, next) => {})
 
 // Fetch data about a specific Assignment.
-router.get('/assignments/:id', async (req, res, next) => {})
-
+router.get('/:id', async (req, res, next) => {})
 
 // Update data for a specific Assignment.
-router.patch('/assignments/:id', async (req, res, next) => {})
-
+router.patch('/:id', async (req, res, next) => {})
 
 // Remove a specific Assignment from the database.
-router.delete('/assignments/:id', async (req, res, next) => {})
-
+router.delete('/:id', async (req, res, next) => {})
 
 // Fetch the list of all Submissions for an Assignment.
-router.get('/assignments/:id/submissions', async (req, res, next) => {})
+router.get('/:id/submissions', async (req, res, next) => {})
 
-// 
-router.post('/assignments/:id/submissions', async (req, res, next) => {})
+// create a new submission
+router.post('/:id/submissions', async (req, res, next) => {})
 

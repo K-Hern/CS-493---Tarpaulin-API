@@ -10,15 +10,15 @@ const images_upload = multer({ storage: images_storage, fileFilter: imageFilter 
 
 
 // Fetch the list of all Courses.
-router.get('/courses', async (req, res, next) => {
+router.get('/', async (req, res, next) => {
 
-    // declare database
+    // declare database, init collection
     const db = getDbReference();
+    const collection = db.collection("courses");
 
     // implement pagination
-
     // get number of records (courses)
-    const coursesNumber = db.courses.countDocuments();
+    const coursesNumber = await collection.countDocuments();
 
     /*
     * Compute page number based on optional query string parameter `page`.
@@ -30,50 +30,55 @@ router.get('/courses', async (req, res, next) => {
     page = page > lastPage ? lastPage : page;
     page = page < 1 ? 1 : page;
 
-    //
-    const pageCourses = await db.courses.find();
+    // compute skip limit for MongoDB
+    const skip = (page - 1) * numPerPage;
 
+    // Get records from MongoDB
+    const pageCourses = await collection.find()
+    .skip(skip)
+    .limit(numPerPage)
+    .toArray();
 
 
 })
 
 // Create a new course.
-router.post('/courses', async (req, res, next) => {
+router.post('/', async (req, res, next) => {
 
 })
 
 // Fetch data about a specific Course.
-router.get('/courses/:id', async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
 
 })
 
 // Update data for a specific Course.
-router.patch('/courses/:id', async (req, res, next) => {
+router.patch('/:id', async (req, res, next) => {
 
 })
 
 // Remove a specific Course from the database.
-router.delete('/courses/:id', async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
 
 })
 
 // Fetch a list of the students enrolled in the Course.
-router.get('/courses/:id/students', async (req, res, next) => {
+router.get('/:id/students', async (req, res, next) => {
 
 })
 
 // Update enrollment for a Course.
-router.post('/courses/:id/students', async (req, res, next) => {
+router.post('/:id/students', async (req, res, next) => {
 
 })
 
 // Fetch a CSV file containing list of the students enrolled in the Course.
-router.get('/courses/:id/roster', async (req, res, next) => {
+router.get('/:id/roster', async (req, res, next) => {
 
 })
 
 // Fetch a list of the Assignments for the Course.
-router.get('/courses/:id/assignments', async (req, res, next) => {
+router.get('/:id/assignments', async (req, res, next) => {
 
 })
 
