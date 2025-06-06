@@ -1,6 +1,8 @@
 const { ObjectId } = require('mongodb')
 const { getDbReference, getSubmissionsBucket, submissionsMetadataCollection} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
+const { getNextSequenceValue } = require('../lib/idGenerator')
+
 
 /*
  * Schema describing required/optional fields of a submission object.
@@ -84,7 +86,7 @@ async function getSubmissionDownloadStreamById(id) {
 
 exports.getSubmissionDownloadStreamById = getSubmissionDownloadStreamById
 
-// This function created for AI tools for testing purposes (untested)
+// This function created by AI tools for testing purposes (untested)
 async function insertNewSubmission(subObj) {
   const bucket = getSubmissionsBucket();
   const { file, ...metadata } = subObj;

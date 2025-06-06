@@ -1,8 +1,11 @@
 const { ObjectId } = require('mongodb')
 const { getDbReference } = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
+const { getNextSequenceValue } = require('../lib/idGenerator')
 const bcrypt = require('bcryptjs')
 const usersCollection = "users"
+exports.usersCollection = usersCollection
+
 const user_roles = {
   admin : 'admin',
   instructor : 'instructor',
@@ -28,9 +31,10 @@ exports.usersSchema = usersSchema
 async function createNewUser(user_details) {
   const new_user = extractValidFields(user_details, usersSchema);
   new_user.password = await bcrypt.hash(new_user.password, 8);
+  new_user._id = await getNextSequenceValue(usersCollection)
   const db = getDbReference();
   const returnObj = await db.collection(usersCollection).insertOne(new_user);
-  return (returnObj.insertedId) ? returnObj.insertedId : null;
+  return returnObj.insertedId ?? null;
 }
 exports.createNewUser = createNewUser
 
@@ -43,7 +47,7 @@ exports.getUserByEmail = getUserByEmail
 
 async function getUserById(id){
   const db = getDbReference();
-  const user = db.collection(usersCollection).findOne({_id: new ObjectId(id)})
+  const user = db.collection(usersCollection).findOne({_id: id})
   return user;
 }
 exports.getUserById = getUserById
@@ -54,12 +58,9 @@ exports.getUserById = getUserById
  * business entries.
  */
 async function bulkInsertNewUsers(users) {
-  const usersToInsert = users.map(function (user) {
-    return extractValidFields(user, usersSchema)
-  })
   const db = getDbReference()
   const collection = db.collection(usersCollection)
-  const result = await collection.insertMany(usersToInsert)
+  const result = await collection.insertMany(users)
   return result.insertedIds
 }
 exports.bulkInsertNewUsers = bulkInsertNewUsers

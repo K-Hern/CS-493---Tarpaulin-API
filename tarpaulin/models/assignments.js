@@ -1,7 +1,9 @@
-const { ObjectId } = require('mongodb')
 const { getDbReference } = require('../lib/mongo')
 const { deleteAllSubmissionsByAssignmentId } = require('./submissions')
+const { getNextSequenceValue } = require('../lib/idGenerator')
 const assignmentsCollection = 'assignments';
+exports.assignmentsCollection = assignmentsCollection
+
 
 /*
  * Schema describing required/optional fields of an assignment object.
@@ -19,6 +21,7 @@ exports.assignmentsSchema = assignmentsSchema
  */
 async function createNewAssignment(assignment_details) {
   const new_assignment = extractValidFields(assignment_details, assignmentsSchema);
+  new_assignment._id = await getNextSequenceValue(assignmentsCollection);
   const db = getDbReference();
   const returnObj = await db.collection(assignmentsCollection).insertOne(new_assignment);
   return returnObj.insertedId ?? null;
@@ -31,7 +34,7 @@ async function updateAssignment(id, assignment_details) {
   const db = getDbReference();
   const returnObj = await db.collection(assignmentsCollection)
     .updateOne(
-      {_id: new ObjectId(id)},
+      {_id: id},
       { $set: new_assignment_vals}
     )
   return (returnObj.matchedCount == 1)
@@ -40,14 +43,14 @@ exports.updateAssignment = updateAssignment
 
 async function getAssignmentById(id){
   const db = getDbReference();
-  const assignment = db.collection(assignmentsCollection).findOne({_id: new ObjectId(id)})
+  const assignment = await db.collection(assignmentsCollection).findOne({_id: id})
   return assignment;
 }
 exports.getAssignmentById = getAssignmentById
 
 async function getAllAssignmentsByCourseId(courseId){
   const db = getDbReference();
-  const assignmentsList = db.collection(assignmentsCollection).find({courseId: courseId}).toArray();
+  const assignmentsList = await db.collection(assignmentsCollection).find({courseId: courseId}).toArray();
   return assignmentsList;
 }
 exports.getAllAssignmentsByCourseId = getAllAssignmentsByCourseId
@@ -56,7 +59,7 @@ exports.getAllAssignmentsByCourseId = getAllAssignmentsByCourseId
 // Also deletes all corresponding submission files
 async function deleteAssignmentById(id) {
   const db = getDbReference();
-  const result = await db.collection(assignmentsCollection).deleteOne({ _id: new ObjectId(id) });
+  const result = await db.collection(assignmentsCollection).deleteOne({ _id: id });
   if (result.deletedCount){
     deleteAllSubmissionsByAssignmentId(id)
   }
@@ -81,12 +84,9 @@ exports.deleteAllAssignmentsByCourseId = deleteAllAssignmentsByCourseId
  * business entries.
  */
 async function bulkInsertNewAssignments(assignments) {
-  const assignmentsToInsert = assignments.map(function (assignment) {
-    return extractValidFields(assignment, assignmentsSchema)
-  })
   const db = getDbReference()
   const collection = db.collection(assignmentsCollection)
-  const result = await collection.insertMany(assignmentsToInsert)
+  const result = await collection.insertMany(assignments)
   return result.insertedIds
 }
 exports.bulkInsertNewAssignments = bulkInsertNewAssignments

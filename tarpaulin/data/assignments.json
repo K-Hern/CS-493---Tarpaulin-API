@@ -1,20 +1,20 @@
 [
     {
-        "id": 0,
+        "_id": 0,
         "courseId": 0,
         "title": "Assignment 0",
         "points": 100,
         "due": "2022-06-14T17:00:00-07:00"
     },
     {
-        "id": 1,
+        "_id": 1,
         "courseId": 1,
         "title": "Assignment 1",
         "points": 100,
         "due": "2022-06-14T17:00:00-07:00"
     },
     {
-        "id": 2,
+        "_id": 2,
         "courseId": 2,
         "title": "Assignment 2",
         "points": 100,
