@@ -74,3 +74,19 @@ async function deleteAllAssignmentsByCourseId(courseId) {
   await db.collection(assignmentsCollection).deleteMany({ courseId: courseId });
 }
 exports.deleteAllAssignmentsByCourseId = deleteAllAssignmentsByCourseId
+
+/*
+ * Executes a DB query to bulk insert an array new business into the database.
+ * Returns a Promise that resolves to a map of the IDs of the newly-created
+ * business entries.
+ */
+async function bulkInsertNewAssignments(assignments) {
+  const assignmentsToInsert = assignments.map(function (assignment) {
+    return extractValidFields(assignment, assignmentsSchema)
+  })
+  const db = getDbReference()
+  const collection = db.collection(assignmentsCollection)
+  const result = await collection.insertMany(assignmentsToInsert)
+  return result.insertedIds
+}
+exports.bulkInsertNewAssignments = bulkInsertNewAssignments

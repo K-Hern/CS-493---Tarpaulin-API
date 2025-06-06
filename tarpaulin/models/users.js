@@ -47,3 +47,19 @@ async function getUserById(id){
   return user;
 }
 exports.getUserById = getUserById
+
+/*
+ * Executes a DB query to bulk insert an array new business into the database.
+ * Returns a Promise that resolves to a map of the IDs of the newly-created
+ * business entries.
+ */
+async function bulkInsertNewUsers(users) {
+  const usersToInsert = users.map(function (user) {
+    return extractValidFields(user, usersSchema)
+  })
+  const db = getDbReference()
+  const collection = db.collection(usersCollection)
+  const result = await collection.insertMany(usersToInsert)
+  return result.insertedIds
+}
+exports.bulkInsertNewUsers = bulkInsertNewUsers

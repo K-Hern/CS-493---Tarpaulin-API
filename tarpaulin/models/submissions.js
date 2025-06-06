@@ -5,14 +5,14 @@ const { extractValidFields } = require('../lib/validation')
 /*
  * Schema describing required/optional fields of a submission object.
  */
-const submissionSchema = {
+const submissionsSchema = {
   assignmentId: { required: true },
   studentId: { required: true },
   timestamp: { required: true },
   grade: { required: true },
   file: { required: false }
 }
-exports.submissionSchema = submissionSchema
+exports.submissionsSchema = submissionsSchema
 
 /*
  * Executes a DB query to delete a photo (both image and thumb) from the DB (
@@ -83,3 +83,35 @@ async function getSubmissionDownloadStreamById(id) {
 }
 
 exports.getSubmissionDownloadStreamById = getSubmissionDownloadStreamById
+
+// This function created for AI tools for testing purposes (untested)
+async function insertNewSubmission(subObj) {
+  const bucket = getSubmissionsBucket();
+  const { file, ...metadata } = subObj;
+
+  // If file is a binary string, convert to Buffer
+  const buffer = Buffer.isBuffer(file) ? file : Buffer.from(file, 'binary');
+  const stream = Readable.from(buffer);
+
+  return new Promise((resolve, reject) => {
+    const uploadStream = bucket.openUploadStream('submission', { metadata });
+    stream.pipe(uploadStream)
+      .on('error', reject)
+      .on('finish', () => resolve(uploadStream.id));
+  });
+}
+
+/*
+ * Executes a DB query to bulk insert an array new business into the database.
+ * Returns a Promise that resolves to a map of the IDs of the newly-created
+ * business entries.
+ */
+async function bulkInsertNewSubmissions(submissions) {
+  const insertedIds = [];
+  for (const sub in submissions){
+    const id = await insertNewSubmission(sub);
+    insertedIds.push(id);
+  }
+  return insertedIds;
+}
+exports.bulkInsertNewSubmissions = bulkInsertNewSubmissions

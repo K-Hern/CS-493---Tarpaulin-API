@@ -66,3 +66,19 @@ async function findAllCoursesByCondition(queryObj){
 }
 exports.findAllCoursesByCondition = findAllCoursesByCondition
 
+/*
+ * Executes a DB query to bulk insert an array new business into the database.
+ * Returns a Promise that resolves to a map of the IDs of the newly-created
+ * business entries.
+ */
+async function bulkInsertNewCourses(courses) {
+  const coursesToInsert = courses.map(function (course) {
+    return extractValidFields(course, coursesSchema)
+  })
+  const db = getDbReference()
+  const collection = db.collection(coursesCollection)
+  const result = await collection.insertMany(coursesToInsert)
+  return result.insertedIds
+}
+exports.bulkInsertNewCourses = bulkInsertNewCourses
+
