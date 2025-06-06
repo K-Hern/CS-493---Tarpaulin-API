@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb')
-const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
-const { extractValidFields } = require('../lib/validation')
+const { getDbReference } = require('../lib/mongo')
+const { deleteAllSubmissionsByAssignmentId } = require('./submissions')
+const assignmentsCollection = 'assignments';
 
 /*
  * Schema describing required/optional fields of an assignment object.
@@ -14,58 +15,62 @@ const assignmentsSchema = {
 exports.assignmentsSchema = assignmentsSchema
 
 /*
- * Executes a DB query to insert a new photo's metadata into the database.
+ * Executes a DB query to insert a new user into the database.
  */
-async function insertNewPhoto(req) {
-  metadata = extractValidFields(req.body, PhotoSchema)
-  metadata.businessId = new ObjectId(metadata.businessId)
-  metadata.extension = imageTypes[req.file.mimetype];
-  metadata.thumbId = new ObjectId(req.file._id)
+async function createNewAssignment(assignment_details) {
+  const new_assignment = extractValidFields(assignment_details, assignmentsSchema);
   const db = getDbReference();
-  await db.collection('images.files').updateOne(
-    { _id: new ObjectId(req.file.id) },
-    { $set: { metadata: metadata } }
-  )
-  req.file.extension = metadata.extension;
-  push_item(`${req.file.id}.${metadata.extension}`)
-  return
+  const returnObj = await db.collection(assignmentsCollection).insertOne(new_assignment);
+  return returnObj.insertedId ?? null;
 }
-exports.insertNewPhoto = insertNewPhoto
+exports.createNewAssignment = createNewAssignment
 
-/*
- * Executes a DB query to delete a photo (both image and thumb) from the DB (
- both chunk and file)
- */
-async function deletePhoto(id) {
-  const image_bucket = getImagesBucket();
-  await image_bucket.delete(new ObjectId(id));
-  push_item(`DELETE ${id}`)
-  return
-}
-exports.deletePhoto = deletePhoto
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDetailsById(id, type) {
+// Returns a boolean indicating success or failure
+async function updateAssignment(id, assignment_details) {
+  const new_assignment_vals = extractValidFields(assignment_details, assignmentsSchema);
   const db = getDbReference();
-  const file = await db.collection(`${type}.files`).findOne({ _id: new ObjectId(
-  id) });
-  return file;
+  const returnObj = await db.collection(assignmentsCollection)
+    .updateOne(
+      {_id: new ObjectId(id)},
+      { $set: new_assignment_vals}
+    )
+  return (returnObj.matchedCount == 1)
 }
-exports.getPhotoDetailsById = getPhotoDetailsById
+exports.updateAssignment = updateAssignment
 
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDownloadStreamById(id, type) {
-  const bucket = (type == "images") ? getImagesBucket() : getThumbsBucket();
-  const download_stream = bucket.openDownloadStream(new ObjectId(id));
-  return download_stream; 
+async function getAssignmentById(id){
+  const db = getDbReference();
+  const assignment = db.collection(assignmentsCollection).findOne({_id: new ObjectId(id)})
+  return assignment;
 }
+exports.getAssignmentById = getAssignmentById
 
-exports.getPhotoDownloadStreamById = getPhotoDownloadStreamById
+async function getAllAssignmentsByCourseId(courseId){
+  const db = getDbReference();
+  const assignmentsList = db.collection(assignmentsCollection).find({courseId: courseId}).toArray();
+  return assignmentsList;
+}
+exports.getAllAssignmentsByCourseId = getAllAssignmentsByCourseId
+
+// Returns boolean indicating success/fail
+// Also deletes all corresponding submission files
+async function deleteAssignmentById(id) {
+  const db = getDbReference();
+  const result = await db.collection(assignmentsCollection).deleteOne({ _id: new ObjectId(id) });
+  if (result.deletedCount){
+    deleteAllSubmissionsByAssignmentId(id)
+  }
+  return (result.deletedCount == 1);
+}
+exports.deleteAssignmentById = deleteAssignmentById
+
+// Also deletes all corresponding submissions before deleting self
+async function deleteAllAssignmentsByCourseId(courseId) {
+  const db = getDbReference();
+  const assignments = await getAllAssignmentsByCourseId(courseId);
+  for (const ass of assignments) {
+    await deleteAllSubmissionsByAssignmentId(ass._id);
+  }
+  await db.collection(assignmentsCollection).deleteMany({ courseId: courseId });
+}
+exports.deleteAllAssignmentsByCourseId = deleteAllAssignmentsByCourseId

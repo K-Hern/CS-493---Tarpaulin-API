@@ -1,15 +1,17 @@
 const { Router } = require('express')
-const multer = require('multer');
-const { images_storage, imageFilter, getDbReference } = require('../lib/mongo')
+const { getDbReference } = require('../lib/mongo')
 const { validateAgainstSchema } = require('../lib/validation')
 const { } = require('../models/users');
-const { } = require('../models/courses');
+const { deleteCourseByID, coursesSchema, getCourseDetailsById, updateCourse } = require('../models/courses');
+const _500_obj = {error: "Internal Server Error"}
+const _400_obj = {error: "Malformed Request"}
 
 const router = Router()
-const images_upload = multer({ storage: images_storage, fileFilter: imageFilter });
 
 // Fetch the list of all Courses.
 router.get('/', async (req, res, next) => {
+    // allows users to see information about all Courses
+    // not return information about a Course's enrolled students or its Assignments
 
     // declare database, init collection
     const db = getDbReference();
@@ -69,6 +71,7 @@ router.post('/', async (req, res, next) => {
 
 // Fetch data about a specific Course.
 router.get('/:id', async (req, res, next) => {
+    // not return information about a Course's enrolled students or its Assignments
 
     // grab courseid from params
     const courseid = parseInt(req.params.id);
@@ -81,23 +84,70 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // Update data for a specific Course.
+// Auth: Only an authenticated User with 'admin'
+//  role or an authenticated 'instructor' User whose
+//  ID matches the instructorId of the Course can update
+//  Course information.
 router.patch('/:id', async (req, res, next) => {
-    
+  if (await getCourseDetailsById(req.params.id)){
+    if (validateAgainstSchema(req.body, coursesSchema)){
+      (await updateCourse(req.params.id, req.body)) ? 
+      res.status(200).send()
+      : 
+      res.status(500).send(_500_obj)
+    } else {
+      return res.status(400).send(_400_obj)
+    }
+  } else {
+    return next()
+  }
+
 })
 
 // Remove a specific Course from the database.
+// AUTH: Only an authenticated User with 'admin' role can remove a Course
 router.delete('/:id', async (req, res, next) => {
-
+  if (await getCourseDetailsById(req.params.id)){
+    await deleteAllAssignmentsByCourseId(req.params.id)
+    return res.status(204).send();
+  } else {
+    return next();
+  }
 })
 
 // Fetch a list of the students enrolled in the Course.
+// AUTH:  Only an authenticated User with 'admin' role or
+//  an authenticated 'instructor' User whose ID matches the
+//  instructorId of the Course can fetch the list of enrolled students.
 router.get('/:id/students', async (req, res, next) => {
-
+  const course = await getCourseDetailsById(req.params.id);
+  if (course){
+    res.status(200).send(course.students)
+  } else {
+    return next();
+  }
 })
 
 // Update enrollment for a Course.
 router.post('/:id/students', async (req, res, next) => {
-
+  const course = await getCourseDetailsById(req.params.id);
+  if (course){
+    if (req.body.add || req.body.remove){
+      let result = course.students;
+      if (req.body.remove){
+        const toRemove = new Set(req.body.remove);
+        result = course.students.filter(indStud => !toRemove.has(indStud));
+      }
+      if (req.body.add){
+        req.body.add.map((newStud)=>result.push(newStud))
+      }
+      updateCourse(course.id, {students: result})
+    } else {
+      res.status(400).send(_400_obj)
+    }
+  } else {
+    return next();
+  }
 })
 
 // Fetch a CSV file containing list of the students enrolled in the Course.
@@ -107,7 +157,14 @@ router.get('/:id/roster', async (req, res, next) => {
 
 // Fetch a list of the Assignments for the Course.
 router.get('/:id/assignments', async (req, res, next) => {
-
+  const assignmentsList = getAllAssignmentsByCourseId(req.params.id)
+  if (assignmentsList.length > 0){
+    const assignmentIds = []
+    assignmentsList.map((assObj)=>assignmentIds.push(`/assignments/${assObj._id}`))
+    return res.status(200).send({assignments: assignmentIds})
+  } else {
+    return next();
+  }
 })
 
 module.exports = router 

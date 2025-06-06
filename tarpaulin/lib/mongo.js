@@ -8,13 +8,13 @@ const mongoUser = process.env.MONGO_USER
 const mongoPassword = process.env.MONGO_PASSWORD
 const mongoDbName = process.env.MONGO_DB_NAME
 const mongoAuthDbName = process.env.MONGO_AUTH_DB_NAME || mongoDbName
+const mongoUrl = `mongodb://${mongoUser}:${mongoPassword}@${mongoHost}:${mongoPort}/${mongoAuthDbName}`
 
-const mongoUrl = `mongodb://${mongoUser}:${mongoPassword}@${mongoHost}:${
-mongoPort}/${mongoAuthDbName}`
+const submissionsBucketName = 'submissions';
+exports.submissionsMetadataCollection = `${submissionsBucketName}.files`
 
 let db;
-let gfs_images_bucket;
-let gfs_thumbs_bucket;
+let gfs_submissions_bucket;
 let _closeDbConnection;
 
 exports.connectToDb = function (callback) {
@@ -23,8 +23,7 @@ exports.connectToDb = function (callback) {
       throw err
     }
     db = client.db(mongoDbName)
-    gfs_images_bucket = new GridFSBucket(db, { bucketName: 'images' });
-    gfs_thumbs_bucket = new GridFSBucket(db, { bucketName: 'thumbs' });
+    gfs_submissions_bucket = new GridFSBucket(db, { bucketName: submissionsBucketName });
     _closeDbConnection = function (callback) {
       client.close()
       callback()
@@ -33,39 +32,28 @@ exports.connectToDb = function (callback) {
   })
 }
 
-exports.images_storage = new GridFsStorage({
+exports.submissions_storage = new GridFsStorage({
   url: mongoUrl,
   file: (req, file) => {
     return {
-      bucketName: 'images'
+      bucketName: submissionsBucketName,
+      metadata:{
+        assignmentId: req.body.assignmentId,
+        studentId: req.body.studentId,
+        timestamp: req.body.timestamp,
+        grade: req.body.grade,
+        mimeType: file.mimetype 
+      }
     };
   }
 });
-
-exports.thumbs_storage = new GridFsStorage({
-  url: mongoUrl,
-  file: (req, file) => {
-    return {
-      bucketName: 'thumbs'
-    };
-  },
-});
-
-exports.imageFilter = function (req, file, callback) {
-  return callback(null, ((file.mimetype == 'image/jpeg') || (file.mimetype == 
-  'image/png')))
-}
 
 exports.getDbReference = function () {
   return db
 }
 
-exports.getImagesBucket = function () {
-  return gfs_images_bucket
-}
-
-exports.getThumbsBucket = function () {
-  return gfs_thumbs_bucket
+exports.getSubmissionsBucket = function () {
+  return gfs_submissions_bucket
 }
 
 exports.closeDbConnection = function (callback) {

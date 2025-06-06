@@ -3,6 +3,12 @@ const { getDbReference } = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
 const bcrypt = require('bcryptjs')
 const usersCollection = "users"
+const user_roles = {
+  admin : 'admin',
+  instructor : 'instructor',
+  student : 'student',
+}
+exports.user_roles = user_roles;
 
 /*
  * Schema describing required/optional fields of a user object.
@@ -13,6 +19,7 @@ const usersSchema = {
   password: { required: true },
   role: { required: true }
 }
+// NOTE - users should also include a list of course ids which they are enrolled in/teach
 exports.usersSchema = usersSchema
 
 /*
@@ -22,14 +29,21 @@ async function createNewUser(user_details) {
   const new_user = extractValidFields(user_details, usersSchema);
   new_user.password = await bcrypt.hash(new_user.password, 8);
   const db = getDbReference();
-  await db.collection(usersCollection).insertOne(new_user);
-  return
+  const returnObj = await db.collection(usersCollection).insertOne(new_user);
+  return (returnObj.insertedId) ? returnObj.insertedId : null;
 }
 exports.createNewUser = createNewUser
 
-async function getUser(email){
+async function getUserByEmail(email){
   const db = getDbReference();
   const user = db.collection(usersCollection).findOne({email: email})
   return user;
 }
-exports.getUser = getUser
+exports.getUserByEmail = getUserByEmail
+
+async function getUserById(id){
+  const db = getDbReference();
+  const user = db.collection(usersCollection).findOne({_id: new ObjectId(id)})
+  return user;
+}
+exports.getUserById = getUserById

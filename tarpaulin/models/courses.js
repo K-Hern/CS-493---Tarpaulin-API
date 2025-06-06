@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb')
-const { getDbReference, getImagesBucket, getThumbsBucket} = require('../lib/mongo')
+const { getDbReference} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
+const coursesCollection = 'courses'
 
 /*
  * Schema describing required/optional fields of a courses object.
@@ -10,63 +11,58 @@ const coursesSchema = {
   number: { required: true },
   title: { required: true },
   term: { required: true },
-  instructorid:{ required: true }
+  instructorId:{ required: true },
+  students: {required: false}
 }
+// NOTE - Courses schema should also include a list of students ids
 exports.coursesSchema = coursesSchema
 
-//TO DO: change to insert new course
-/*
- * Executes a DB query to insert a new photo's metadata into the database.
- */
-async function insertNewPhoto(req) {
-  metadata = extractValidFields(req.body, PhotoSchema)
-  metadata.businessId = new ObjectId(metadata.businessId)
-  metadata.extension = imageTypes[req.file.mimetype];
-  metadata.thumbId = new ObjectId(req.file._id)
+// Returns the new id on success or null on failure
+// pass in req.body
+async function createCourse(courseDetails){
+  const new_course = extractValidFields(courseDetails, coursesSchema);
   const db = getDbReference();
-  await db.collection('images.files').updateOne(
-    { _id: new ObjectId(req.file.id) },
-    { $set: { metadata: metadata } }
-  )
-  req.file.extension = metadata.extension;
-  push_item(`${req.file.id}.${metadata.extension}`)
-  return
+  const returnObj = await db.collection(coursesCollection).insertOne(new_course);
+  return returnObj.insertedId ?? null;
 }
-exports.insertNewPhoto = insertNewPhoto
+exports.createCourse = createCourse
 
-/*
- * Executes a DB query to delete a photo (both image and thumb) from the DB (
- both chunk and file)
- */
-async function deletePhoto(id) {
-  const image_bucket = getImagesBucket();
-  await image_bucket.delete(new ObjectId(id));
-  push_item(`DELETE ${id}`)
-  return
-}
-exports.deletePhoto = deletePhoto
-
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDetailsById(id) {
+// Returns a boolean indicating success or failure
+async function updateCourse(id, course_details) {
+  const new_course_vals = extractValidFields(course_details, coursesSchema);
   const db = getDbReference();
-  const file = await db.collection(`submission.files`).findOne({ _id: new ObjectId(id) });
-  return file;
+  const returnObj = await db.collection(coursesCollection)
+    .updateOne(
+      {_id: new ObjectId(id)},
+      { $set: new_course_vals}
+    )
+  return (returnObj.matchedCount == 1)
 }
-exports.getPhotoDetailsById = getPhotoDetailsById
+exports.updateCourse = updateCourse
 
-/*
- * Executes a DB query to fetch a single specified photo's data based on its ID.
- * Returns a Promise that resolves to an object containing the requested
- * photo.
- */
-async function getPhotoDownloadStreamById(id, type) {
-  const bucket = (type == "images") ? getImagesBucket() : getThumbsBucket();
-  const download_stream = bucket.openDownloadStream(new ObjectId(id));
-  return download_stream; 
+// Returns a boolean indicating success or failure
+async function deleteCourseById(id) {
+  const db = getDbReference();
+  const result = await db.collection(coursesCollection).deleteOne({ _id: new ObjectId(id) });
+  return result.deletedCount === 1;
 }
+exports.deleteCourseById = deleteCourseById
 
-exports.getPhotoDownloadStreamById = getPhotoDownloadStreamById
+
+// returns the course object on 200 else null
+async function getCourseDetailsById(id){
+  const db = getDbReference();
+  const course = await db.collection(coursesCollection).findOne({_id: new ObjectId(id)});
+  return course;
+}
+exports.getCourseDetailsById = getCourseDetailsById
+
+// Returns a list of ids on success or [] on failure
+// pass in {field: value}
+async function findAllCoursesByCondition(queryObj){
+  const db = getDbReference();
+  const courses = await db.collection(coursesCollection).find(queryObj).toArray();
+  return courses;
+}
+exports.findAllCoursesByCondition = findAllCoursesByCondition
+

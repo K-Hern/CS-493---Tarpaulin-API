@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
+// NOTE - users endpoints expect auth middleware to set req.user to their role
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 async function requireAuth(req, res, next) {

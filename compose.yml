@@ -1,3 +1,65 @@
+# version: '3.9'
+
+# services:
+#   db-init:
+#     build: ./tarpaulin/
+#     environment:
+#       MONGO_HOST: db
+#       MONGO_USER: ${MONGO_ROOT_USER}
+#       MONGO_PASSWORD: ${MONGO_ROOT_PASSWORD}
+#       MONGO_DB_NAME: ${MONGO_DB_NAME}
+#       MONGO_AUTH_DB_NAME: admin
+#       MONGO_CREATE_USER: ${MONGO_USER}
+#       MONGO_CREATE_PASSWORD: ${MONGO_PASSWORD}
+#       RABBITMQ_HOST: ${RABBITMQ_HOST}
+#     depends_on:
+#       - db
+#     restart: on-failure
+#     command: npm run initDB
+#   api:
+#     build:
+#       context: ./tarpaulin/
+#     ports:
+#       - 3000:3000
+#     environment:
+#       REDIS_HOST: ${REDIS_HOST}
+#       REDIS_PORT: ${REDIS_PORT}
+#       MONGO_HOST: ${MONGO_HOST}
+#       MONGO_PORT: ${MONGO_PORT}
+#       MONGO_DB_NAME: ${MONGO_DB_NAME}
+#       MONGO_USER: ${MONGO_USER}
+#       MONGO_PASSWORD: ${MONGO_PASSWORD}
+#     depends_on:
+#       db:
+#         condition: service_started
+#       db-init:
+#         condition: service_completed_successfully
+#       redis:
+#         condition: service_healthy
+#     working_dir: /app
+#     restart: always
+
+#   redis:
+#     build:
+#       context: ./redis
+#     ports:
+#       - 6379:6379
+#     restart: always
+
+#   db:
+#     build:
+#       context: ./mongo
+#     ports:
+#       27017:27017
+#     environment:
+#       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+#       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+#       MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+#     restart: always
+
+# volumes:
+#   mongodb_data:
+
 version: '3.9'
 
 services:

@@ -7,6 +7,7 @@
     "multer-gridfs-storage": "^5.0.2"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "initDB": "node initDB.js"
   }
 }

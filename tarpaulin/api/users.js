@@ -5,13 +5,14 @@
 const { Router } = require('express')
 const { validateAgainstSchema } = require('../lib/validation')
 const bcrypt = require('bcryptjs')
-const { usersSchema } = require('../models/users');
+const { usersSchema, user_roles, getUserById, getUserByEmail } = require('../models/users');
 const router = Router()
 
 // Create a new User.
+// Auth: Only an authenticated User with 'admin' role can create users with the 'admin' or 'instructor' roles.
 router.post('/', async (req, res, next) => {
   if (!validateAgainstSchema(req.body, usersSchema)){
-    return res.status(400).send({error: "invalid user fields"})
+    return res.status(400).send({error: "Malformed Request"})
   }
   try {
     const user = await createNewUser(req.body)
@@ -27,7 +28,11 @@ router.post('/', async (req, res, next) => {
 
 // Log in a User.
 router.post('/login', async (req, res, next) => {
-  const user = await getUser(req.body.email);
+  if (!validateAgainstSchema(req.body, usersSchema)){
+    return res.status(400).send({error: "Malformed Request"})
+  }
+
+  const user = await getUserByEmail(req.body.email);
   if (user) {
     if (await bcrypt.compare(req.body.password, user.password)){
 
@@ -50,23 +55,27 @@ router.post('/login', async (req, res, next) => {
       res.send(response);
       return;
     }
+  } else {
+    res.status(401);
+    res.send("Invalid Credentials")
+    return;
   }
-  
-  res.status(401);
-  res.send("Invalid Credentials")
-  return;
 })
 
 // Fetch data about a specific User.
+// AUTH: ONLY jwt id must match id param
 router.get('/:id', async (req, res, next) => {
-  const user = await getUser(req.user.email);
-  if (user) {
-    const userObj = user.toJSON();
-    delete userObj.password;
-    res.status(200);
-    res.send(userObj);
+  const user = await getUserById(req.params.id)
+  if (user){
+    if (user.role == user_roles.student || user.role == user_roles.instructor){
+      delete user._id
+      return res.status(200).send(user)
+    } else {
+      return res.status(500).send({error: "Internal Server Error"})
+    }
   } else {
-    next()
+    // 404 - user DNE
+    return next();
   }
 })
 
