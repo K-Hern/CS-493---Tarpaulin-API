@@ -1,5 +1,5 @@
 /*
- * API sub-router for businesses collection endpoints.
+ * API sub-router for User collection endpoints.
  */
 
 const { Router } = require('express')

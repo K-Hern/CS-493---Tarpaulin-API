@@ -1,3 +1,6 @@
+/*
+ * API sub-router for Courses collection endpoints.
+ */
 const { Router } = require('express')
 const { getDbReference } = require('../lib/mongo')
 const { validateAgainstSchema } = require('../lib/validation')
@@ -109,6 +112,7 @@ router.patch('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   if (await getCourseDetailsById(req.params.id)){
     await deleteAllAssignmentsByCourseId(req.params.id)
+    await deleteCourseByID(req.params.id)
     return res.status(204).send();
   } else {
     return next();

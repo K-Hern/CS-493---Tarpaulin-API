@@ -1,4 +1,7 @@
-// boilerplate
+/*
+ * API sub-router for Assignment collection endpoints.
+ */
+
 const { Router } = require('express')
 const multer = require('multer');
 const { submissions_storage } = require('../lib/mongo')
@@ -10,8 +13,6 @@ const router = Router()
 const submission_upload = multer({ storage: submissions_storage});
 const _500_obj = {error: "Internal Server Error"}
 const _400_obj = {error: "Malformed Request"}
-
-
 
 // Create a new Assignment.
 // AUTH: Only an authenticated User with 'admin' role or an authenticated 'instructor'
