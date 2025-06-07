@@ -86,3 +86,38 @@ async function bulkInsertNewCourses(courses) {
 }
 exports.bulkInsertNewCourses = bulkInsertNewCourses
 
+/*
+* Returns an array of student details student details for students enrolled in the Course or [] on failure
+*/
+async function getRosterById(id) {
+
+  // grab course from collection matching id
+  const db = getDbReference();
+  const course = await db.collection(coursesCollection).findOne({ _id: parseInt(id) });
+
+  //if course is undefined or empty return []
+  if (!course || course.students.length === 0) {
+    return [];
+  }
+
+  //grab student ids
+  const studentIds = course.students;
+
+  //
+  const students = await db.collection('users')
+    .find({
+      _id: { $in: studentIds },
+      role: "student" 
+    })
+    .project({ _id: 1, name: 1, email: 1 })
+    .toArray();
+
+  return students.map(student => ({
+    id: student._id,
+    name: student.name,
+    email: student.email
+  }));
+  
+}
+exports.getRosterById = getRosterById
+
