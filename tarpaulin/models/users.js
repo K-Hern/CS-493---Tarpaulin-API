@@ -26,6 +26,15 @@ const usersSchema = {
 exports.usersSchema = usersSchema
 
 /*
+ * Schema for user login - only email and password required
+ */
+const loginSchema = {
+  email: { required: true },
+  password: { required: true }
+}
+exports.loginSchema = loginSchema
+
+/*
  * Executes a DB query to insert a new user into the database.
  */
 async function createNewUser(user_details) {
@@ -60,7 +69,16 @@ exports.getUserById = getUserById
 async function bulkInsertNewUsers(users) {
   const db = getDbReference()
   const collection = db.collection(usersCollection)
-  const result = await collection.insertMany(users)
+  
+  // Hash passwords before inserting
+  const usersWithHashedPasswords = await Promise.all(
+    users.map(async (user) => ({
+      ...user,
+      password: await bcrypt.hash(user.password, 8)
+    }))
+  )
+  
+  const result = await collection.insertMany(usersWithHashedPasswords)
   return result.insertedIds
 }
 exports.bulkInsertNewUsers = bulkInsertNewUsers
