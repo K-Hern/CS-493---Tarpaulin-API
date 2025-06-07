@@ -47,7 +47,7 @@ exports.getUserByEmail = getUserByEmail
 
 async function getUserById(id){
   const db = getDbReference();
-  const user = db.collection(usersCollection).findOne({_id: id})
+  const user = db.collection(usersCollection).findOne({_id: parseInt(id)})
   return user;
 }
 exports.getUserById = getUserById

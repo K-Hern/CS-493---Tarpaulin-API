@@ -38,7 +38,7 @@ async function deleteAllSubmissionsByAssignmentId(assignmentId) {
   const bucket = getSubmissionsBucket();
   let success_count = 0
 
-  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': assignmentId }).toArray();
+  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': parseInt(assignmentId) }).toArray();
   for (const file of submissionFiles) {
     try {
       await bucket.delete(file._id);
@@ -57,7 +57,7 @@ exports.deleteAllSubmissionsByAssignmentId = deleteAllSubmissionsByAssignmentId
  */
 async function getAllSubmissionsByAssignmentId(assignmentId) {
   const db = getDbReference();
-  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': assignmentId }).toArray();
+  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': ParseInt(assignmentId) }).toArray();
   return submissionFiles
 }
 exports.getAllSubmissionsByAssignmentId = getAllSubmissionsByAssignmentId

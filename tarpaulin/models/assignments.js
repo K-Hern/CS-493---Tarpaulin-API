@@ -34,7 +34,7 @@ async function updateAssignment(id, assignment_details) {
   const db = getDbReference();
   const returnObj = await db.collection(assignmentsCollection)
     .updateOne(
-      {_id: id},
+      {_id: parseInt(id)},
       { $set: new_assignment_vals}
     )
   return (returnObj.matchedCount == 1)
@@ -43,14 +43,14 @@ exports.updateAssignment = updateAssignment
 
 async function getAssignmentById(id){
   const db = getDbReference();
-  const assignment = await db.collection(assignmentsCollection).findOne({_id: id})
+  const assignment = await db.collection(assignmentsCollection).findOne({_id: parseInt(id)})
   return assignment;
 }
 exports.getAssignmentById = getAssignmentById
 
 async function getAllAssignmentsByCourseId(courseId){
   const db = getDbReference();
-  const assignmentsList = await db.collection(assignmentsCollection).find({courseId: courseId}).toArray();
+  const assignmentsList = await db.collection(assignmentsCollection).find({courseId: parseInt(courseId)}).toArray();
   return assignmentsList;
 }
 exports.getAllAssignmentsByCourseId = getAllAssignmentsByCourseId
@@ -59,7 +59,7 @@ exports.getAllAssignmentsByCourseId = getAllAssignmentsByCourseId
 // Also deletes all corresponding submission files
 async function deleteAssignmentById(id) {
   const db = getDbReference();
-  const result = await db.collection(assignmentsCollection).deleteOne({ _id: id });
+  const result = await db.collection(assignmentsCollection).deleteOne({ _id: parseInt(id) });
   if (result.deletedCount){
     deleteAllSubmissionsByAssignmentId(id)
   }
@@ -74,7 +74,7 @@ async function deleteAllAssignmentsByCourseId(courseId) {
   for (const ass of assignments) {
     await deleteAllSubmissionsByAssignmentId(ass._id);
   }
-  await db.collection(assignmentsCollection).deleteMany({ courseId: courseId });
+  await db.collection(assignmentsCollection).deleteMany({ courseId: parseInt(courseId) });
 }
 exports.deleteAllAssignmentsByCourseId = deleteAllAssignmentsByCourseId
 

@@ -40,7 +40,7 @@ async function updateCourse(id, course_details) {
   const db = getDbReference();
   const returnObj = await db.collection(coursesCollection)
     .updateOne(
-      {_id: id},
+      {_id: parseInt(id)},
       { $set: new_course_vals}
     )
   return (returnObj.matchedCount == 1)
@@ -50,7 +50,7 @@ exports.updateCourse = updateCourse
 // Returns a boolean indicating success or failure
 async function deleteCourseById(id) {
   const db = getDbReference();
-  const result = await db.collection(coursesCollection).deleteOne({_id: id});
+  const result = await db.collection(coursesCollection).deleteOne({_id: parseInt(id)});
   return result.deletedCount === 1;
 }
 exports.deleteCourseById = deleteCourseById
@@ -59,7 +59,7 @@ exports.deleteCourseById = deleteCourseById
 // returns the course object on 200 else null
 async function getCourseDetailsById(id){
   const db = getDbReference();
-  const course = await db.collection(coursesCollection).findOne({_id: id});
+  const course = await db.collection(coursesCollection).findOne({_id: parseInt(id)});
   return course;
 }
 exports.getCourseDetailsById = getCourseDetailsById
