@@ -5,9 +5,13 @@ const { Router } = require('express')
 const { getDbReference } = require('../lib/mongo')
 const { validateAgainstSchema } = require('../lib/validation')
 const { } = require('../models/users');
-const { deleteCourseByID, coursesSchema, getCourseDetailsById, updateCourse } = require('../models/courses');
+const { deleteCourseByID, coursesSchema, getCourseDetailsById, updateCourse, getRosterById } = require('../models/courses');
 const _500_obj = {error: "Internal Server Error"}
 const _400_obj = {error: "Malformed Request"}
+const _404_obj = {error: "Not Found"}
+
+const { Parser } = require('json2csv');
+
 
 const router = Router()
 
@@ -156,10 +160,32 @@ router.post('/:id/students', async (req, res, next) => {
 
 // Fetch a CSV file containing list of the students enrolled in the Course.
 router.get('/:id/roster', async (req, res, next) => {
+  const courseId = parseInt(req.params.id);
+
+  const roster = await getCourseRosterById(courseId);
+
+  if (!roster) {
+    res.status(404).send(_404_obj);
+    return;
+  }
+
+  const fields = [
+    { label: 'id', value: 'id', quote: false }, //keeping ids as ints because our ids are ints and don't have characters
+    { label: 'name', value: 'name', quote: true },  
+    { label: 'email', value: 'email', quote: true }
+  ];
+  
+  const parser = new Parser({ fields, header: false });  
+  const csv = parser.parse(roster);
+  
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename=course-${courseId}-roster.csv`);
+  res.status(200).send(csv);
+  return;
 
 })
 
-// Fetch a list of the Assignments for the Course.
+// Fetch a list in CSV format of the student details for students enrolled in the Course
 router.get('/:id/assignments', async (req, res, next) => {
   const assignmentsList = getAllAssignmentsByCourseId(req.params.id)
   if (assignmentsList.length > 0){
