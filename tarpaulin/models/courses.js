@@ -79,12 +79,9 @@ exports.findAllCoursesByCondition = findAllCoursesByCondition
  * business entries.
  */
 async function bulkInsertNewCourses(courses) {
-  const coursesToInsert = courses.map(function (course) {
-    return extractValidFields(course, coursesSchema)
-  })
   const db = getDbReference()
   const collection = db.collection(coursesCollection)
-  const result = await collection.insertMany(coursesToInsert)
+  const result = await collection.insertMany(courses)
   return result.insertedIds
 }
 exports.bulkInsertNewCourses = bulkInsertNewCourses

@@ -2,6 +2,7 @@ const { ObjectId } = require('mongodb')
 const { getDbReference, getSubmissionsBucket, submissionsMetadataCollection} = require('../lib/mongo')
 const { extractValidFields } = require('../lib/validation')
 const { getNextSequenceValue } = require('../lib/idGenerator')
+const { Readable } = require('stream');
 
 
 /*
@@ -110,7 +111,7 @@ async function insertNewSubmission(subObj) {
  */
 async function bulkInsertNewSubmissions(submissions) {
   const insertedIds = [];
-  for (const sub in submissions){
+  for (const sub of submissions){
     const id = await insertNewSubmission(sub);
     insertedIds.push(id);
   }
