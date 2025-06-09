@@ -102,8 +102,11 @@ router.get('/:id', async (req, res, next) => {
     // call function to grab course by id
     course = await getCourseDetailsById(courseid);
 
-    //return course
-    res.status(200).send(course);
+    if (course) {
+        res.status(200).send(course);
+    } else {
+        return next();
+    }
 });
 
 // Update data for a specific Course.
