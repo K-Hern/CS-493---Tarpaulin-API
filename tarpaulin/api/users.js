@@ -8,9 +8,10 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { usersSchema, loginSchema, user_roles, getUserById, getUserByEmail, createNewUser } = require('../models/users');
 const { requireAdmin, requireSelfOrAdmin } = require('../lib/auth_middleware');
+const { findAllCoursesByCondition } = require('../models/courses');
 const router = Router()
 
-// Create a new User.
+// Create a new User
 // Auth: Only an authenticated User with 'admin' role can create users with the 'admin' or 'instructor' roles.
 router.post('/', requireAdmin, async (req, res, next) => {
   if (!validateAgainstSchema(req.body, usersSchema)){
@@ -25,7 +26,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
   }
 })
 
-// Log in a User.
+// Log in a User
 router.post('/login', async (req, res, next) => {
   if (!validateAgainstSchema(req.body, loginSchema)){
     return res.status(400).send({error: "Malformed Request"})
@@ -52,19 +53,38 @@ router.post('/login', async (req, res, next) => {
   }
 })
 
-// Fetch data about a specific User.
-// AUTH: ONLY jwt id must match id param
+// Fetch data about a specific User
 router.get('/:id', requireSelfOrAdmin, async (req, res, next) => {
   const user = await getUserById(req.params.id)
   if (user){
     if (user.role == user_roles.student || user.role == user_roles.instructor){
-      delete user._id
-      return res.status(200).send(user)
+      let courses = []
+      try {
+        if (user.role === user_roles.student) {
+          const allCourses = await findAllCoursesByCondition({})
+          courses = allCourses
+            .filter(course => course.students && course.students.includes(user._id))
+            .map(course => course._id)
+        } else if (user.role === user_roles.instructor) {
+          const instructorCourses = await findAllCoursesByCondition({ instructorId: user._id })
+          courses = instructorCourses.map(course => course._id)
+        }
+      } catch (err) {
+        console.error("Error fetching user courses:", err)
+      }
+
+      const userResponse = {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        courses: courses
+      }
+
+      return res.status(200).send(userResponse)
     } else {
       return res.status(500).send({error: "Internal Server Error"})
     }
   } else {
-    // 404 - user DNE
     return next();
   }
 })
