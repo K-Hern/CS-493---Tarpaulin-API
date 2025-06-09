@@ -3,9 +3,11 @@
  */
 const { Router } = require('express')
 const { getDbReference } = require('../lib/mongo')
-const { validateAgainstSchema } = require('../lib/validation')
+const { validateAgainstSchema, extractValidFields } = require('../lib/validation')
 const { } = require('../models/users');
-const { deleteCourseByID, coursesSchema, getCourseDetailsById, updateCourse, getRosterById } = require('../models/courses');
+const { deleteCourseById, coursesSchema, getCourseDetailsById, updateCourse, getRosterById, createCourse } = require('../models/courses');
+const { deleteAllAssignmentsByCourseId, getAllAssignmentsByCourseId } = require('../models/assignments');
+const { requireAdmin, requireCourseAccess } = require('../lib/auth_middleware');
 const _500_obj = {error: "Internal Server Error"}
 const _400_obj = {error: "Malformed Request"}
 const _404_obj = {error: "Not Found"}
@@ -58,7 +60,7 @@ router.get('/', async (req, res, next) => {
 })
 
 // Create a new course.
-router.post('/', async (req, res, next) => {
+router.post('/', requireAdmin, async (req, res, next) => {
 
     //validate against schema
     if (validateAgainstSchema(req.body, coursesSchema)) {
@@ -67,7 +69,12 @@ router.post('/', async (req, res, next) => {
         const course = extractValidFields(req.body, coursesSchema);
 
         //call function to insert into database
-        insertNewCourse(course)
+        const courseId = await createCourse(course)
+        if (courseId) {
+            res.status(201).json({ id: courseId })
+        } else {
+            res.status(500).json({ error: "Failed to create course" })
+        }
 
     } else {
         res.status(400).json({
@@ -95,7 +102,7 @@ router.get('/:id', async (req, res, next) => {
 //  role or an authenticated 'instructor' User whose
 //  ID matches the instructorId of the Course can update
 //  Course information.
-router.patch('/:id', async (req, res, next) => {
+router.patch('/:id', requireCourseAccess, async (req, res, next) => {
   if (await getCourseDetailsById(req.params.id)){
     if (validateAgainstSchema(req.body, coursesSchema)){
       (await updateCourse(req.params.id, req.body)) ? 
@@ -113,10 +120,10 @@ router.patch('/:id', async (req, res, next) => {
 
 // Remove a specific Course from the database.
 // AUTH: Only an authenticated User with 'admin' role can remove a Course
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAdmin, async (req, res, next) => {
   if (await getCourseDetailsById(req.params.id)){
     await deleteAllAssignmentsByCourseId(req.params.id)
-    await deleteCourseByID(req.params.id)
+    await deleteCourseById(req.params.id)
     return res.status(204).send();
   } else {
     return next();
@@ -127,7 +134,7 @@ router.delete('/:id', async (req, res, next) => {
 // AUTH:  Only an authenticated User with 'admin' role or
 //  an authenticated 'instructor' User whose ID matches the
 //  instructorId of the Course can fetch the list of enrolled students.
-router.get('/:id/students', async (req, res, next) => {
+router.get('/:id/students', requireCourseAccess, async (req, res, next) => {
   const course = await getCourseDetailsById(req.params.id);
   if (course){
     res.status(200).send(course.students)
@@ -137,7 +144,7 @@ router.get('/:id/students', async (req, res, next) => {
 })
 
 // Update enrollment for a Course.
-router.post('/:id/students', async (req, res, next) => {
+router.post('/:id/students', requireCourseAccess, async (req, res, next) => {
   const course = await getCourseDetailsById(req.params.id);
   if (course){
     if (req.body.add || req.body.remove){
@@ -159,10 +166,10 @@ router.post('/:id/students', async (req, res, next) => {
 })
 
 // Fetch a CSV file containing list of the students enrolled in the Course.
-router.get('/:id/roster', async (req, res, next) => {
+router.get('/:id/roster', requireCourseAccess, async (req, res, next) => {
   const courseId = parseInt(req.params.id);
 
-  const roster = await getCourseRosterById(courseId);
+  const roster = await getRosterById(courseId);
 
   if (!roster) {
     res.status(404).send(_404_obj);
@@ -185,9 +192,9 @@ router.get('/:id/roster', async (req, res, next) => {
 
 })
 
-// Fetch a list in CSV format of the student details for students enrolled in the Course
-router.get('/:id/assignments', async (req, res, next) => {
-  const assignmentsList = getAllAssignmentsByCourseId(req.params.id)
+// Fetch a list of assignments for the Course
+router.get('/:id/assignments', requireCourseAccess, async (req, res, next) => {
+  const assignmentsList = await getAllAssignmentsByCourseId(req.params.id)
   if (assignmentsList.length > 0){
     const assignmentIds = []
     assignmentsList.map((assObj)=>assignmentIds.push(`/assignments/${assObj._id}`))

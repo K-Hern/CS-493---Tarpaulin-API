@@ -7,11 +7,12 @@ const { validateAgainstSchema } = require('../lib/validation')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { usersSchema, loginSchema, user_roles, getUserById, getUserByEmail, createNewUser } = require('../models/users');
+const { requireAdmin, requireSelfOrAdmin } = require('../lib/auth_middleware');
 const router = Router()
 
 // Create a new User.
 // Auth: Only an authenticated User with 'admin' role can create users with the 'admin' or 'instructor' roles.
-router.post('/', async (req, res, next) => {
+router.post('/', requireAdmin, async (req, res, next) => {
   if (!validateAgainstSchema(req.body, usersSchema)){
     return res.status(400).send({error: "Malformed Request"})
   }
@@ -53,7 +54,7 @@ router.post('/login', async (req, res, next) => {
 
 // Fetch data about a specific User.
 // AUTH: ONLY jwt id must match id param
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireSelfOrAdmin, async (req, res, next) => {
   const user = await getUserById(req.params.id)
   if (user){
     if (user.role == user_roles.student || user.role == user_roles.instructor){

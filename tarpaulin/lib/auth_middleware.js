@@ -1,110 +1,172 @@
 const jwt = require('jsonwebtoken')
-const {
-  User,
-  Business,
-  Photo,
-  Review
-} = require('../models/index')
+const { getUserById } = require('../models/users')
 
-function verifyToken(req, res){
-  const user_jwt = req.headers.authorization.split(' ')[1] // Expect: {token: Bearer jahsdfv...}
+function verifyToken(req, res) {
+  if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+    res.status(401).json({ error: "Missing or malformed authorization header" })
+    return false
+  }
+
+  const token = req.headers.authorization.split(' ')[1]
   let decodedJWT
 
   try {
-    decodedJWT = jwt.verify(user_jwt, process.env.JWT_SECRET_KEY)
+    decodedJWT = jwt.verify(token, process.env.JWT_SECRET_KEY)
   } catch (err) {
-    (err.name === 'TokenExpiredError') ? res.status(401).send("Token Expired") : res.status(401).send("UnAuthorized")
-    return false;
+    if (err.name === 'TokenExpiredError') {
+      res.status(401).json({ error: "Token expired" })
+    } else {
+      res.status(401).json({ error: "Invalid token" })
+    }
+    return false
   }
 
   return decodedJWT
 }
 
 /**
- * Verifies that the bearer token UserId and the query string UserId match
- * @return boolean whether the given user is an admin or not
+ * Middleware to require authentication - adds user info to req.user
  */
-async function isUserAdmin(userId){
-  const user = await User.findOne({ where: { userId: userId } });
-  // user.admin is a boolean
-  return (user.admin)
+async function requireAuth(req, res, next) {
+  const decodedJWT = verifyToken(req, res)
+  if (!decodedJWT) {
+    return // verifyToken already sent the response
+  }
+
+  try {
+    const user = await getUserById(decodedJWT.sub)
+    if (!user) {
+      return res.status(401).json({ error: "User not found" })
+    }
+    
+    req.user = {
+      id: user._id,
+      email: user.email,
+      role: user.role
+    }
+    next()
+  } catch (err) {
+    console.error("Auth error:", err)
+    res.status(500).json({ error: "Authentication error" })
+  }
 }
 
 /**
- * Verifies that the bearer token houses a user id that belongs to an admin
+ * Middleware to require admin role
  */
-async function verifyAdmin(req, res, next){
-  // Verify existence of needed vars
-  if (!(req.headers.authorization)){
-    return res.status(400).send("Malformed Request")
-  }
-
-  const decodedJWT = verifyToken(req, res)
-  if (!decodedJWT) {
-    return
-  }
-
-  return (await isUserAdmin(decodedJWT.sub)) ? next() : res.status(401).send("UnAuthorized")
+async function requireAdmin(req, res, next) {
+  await requireAuth(req, res, () => {
+    if (req.user && req.user.role === 'admin') {
+      next()
+    } else {
+      res.status(403).json({ error: "Admin access required" })
+    }
+  })
 }
 
 /**
- * Verifies that the bearer token UserId and the query string UserId match
+ * Middleware to require instructor role (or admin)
  */
-async function verifyBearerBody(req, res, next){
-
-  // Verify existence of needed vars
-  if (!((req.body.userId || req.body.ownerId) && req.headers.authorization)){
-    return res.status(400).send("Malformed Request")
-  }
-
-  const decodedJWT = verifyToken(req, res)
-  if (!decodedJWT) {
-    return
-  }
-
-  const givenUserId = req.body.userId ?? req.body.ownerId
-  return ((await isUserAdmin(decodedJWT.sub)) || (decodedJWT.sub == givenUserId)) ? next() : res.status(401).send("UnAuthorized")
+async function requireInstructor(req, res, next) {
+  await requireAuth(req, res, () => {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'instructor')) {
+      next()
+    } else {
+      res.status(403).json({ error: "Instructor access required" })
+    }
+  })
 }
 
 /**
- * Verifies that the bearer token UserId and the query string UserId match
+ * Middleware to require student role (or admin)
  */
-async function verifyBearerQuery(req, res, next){
-  // Verify existence of needed vars
-  if (!(req.params.userId && req.headers.authorization)){
-    return res.status(400).send("Malformed Request")
-  }
-
-  const decodedJWT = verifyToken(req, res)
-  if (!decodedJWT) {
-    return
-  }
-
-  return ((await isUserAdmin(decodedJWT.sub)) || (decodedJWT.sub == req.params.userId)) ? next() : res.status(401).send("UnAuthorized")
+async function requireStudent(req, res, next) {
+  await requireAuth(req, res, () => {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'student')) {
+      next()
+    } else {
+      res.status(403).json({ error: "Student access required" })
+    }
+  })
 }
 
 /**
- * Verifies that the bearer token UserId and the query string UserId match
+ * Middleware to check if user can access their own data or is admin
  */
-async function verifyBearerBusiness(req, res, next){
-  // Verify existence of needed vars
-  if (!(req.params.businessId && req.headers.authorization)){
-    return res.status(400).send("Malformed Request")
-  }
+async function requireSelfOrAdmin(req, res, next) {
+  await requireAuth(req, res, () => {
+    const requestedUserId = parseInt(req.params.id)
+    if (req.user && (req.user.role === 'admin' || req.user.id === requestedUserId)) {
+      next()
+    } else {
+      res.status(403).json({ error: "Access denied" })
+    }
+  })
+}
 
-  const decodedJWT = verifyToken(req, res)
-  if (!decodedJWT) {
-    return
-  }
+/**
+ * Middleware to check if user can manage a course (admin or course instructor)
+ */
+async function requireCourseAccess(req, res, next) {
+  await requireAuth(req, res, async () => {
+    if (req.user.role === 'admin') {
+      return next()
+    }
+    
+    if (req.user.role === 'instructor') {
+      // Check if this instructor teaches this course
+      const { getCourseDetailsById } = require('../models/courses')
+      try {
+        const course = await getCourseDetailsById(req.params.id)
+        if (course && course.instructorId === req.user.id) {
+          return next()
+        }
+      } catch (err) {
+        console.error("Course access check error:", err)
+      }
+    }
+    
+    res.status(403).json({ error: "Course access denied" })
+  })
+}
 
-  const business = await Business.findOne({ where: { businessId: req.params.businessId } });
-  return ((await isUserAdmin(decodedJWT.sub)) || (decodedJWT.sub == business.ownerId)) ? next() : res.status(401).send("UnAuthorized")
+/**
+ * Middleware to check if user can submit to an assignment (student enrolled in course)
+ */
+async function requireAssignmentSubmissionAccess(req, res, next) {
+  await requireAuth(req, res, async () => {
+    if (req.user.role === 'admin') {
+      return next()
+    }
+    
+    if (req.user.role === 'student') {
+      // Check if student is enrolled in the course for this assignment
+      const { getAssignmentById } = require('../models/assignments')
+      const { getCourseDetailsById } = require('../models/courses')
+      
+      try {
+        const assignment = await getAssignmentById(req.params.id)
+        if (assignment) {
+          const course = await getCourseDetailsById(assignment.courseId)
+          if (course && course.students && course.students.includes(req.user.id)) {
+            return next()
+          }
+        }
+      } catch (err) {
+        console.error("Assignment submission access check error:", err)
+      }
+    }
+    
+    res.status(403).json({ error: "Assignment submission access denied" })
+  })
 }
 
 module.exports = {
-  verifyBearerBody,
-  verifyBearerQuery,
-  verifyBearerBusiness,
-  isUserAdmin,
-  verifyAdmin
+  requireAuth,
+  requireAdmin,
+  requireInstructor,
+  requireStudent,
+  requireSelfOrAdmin,
+  requireCourseAccess,
+  requireAssignmentSubmissionAccess
 }
