@@ -26,9 +26,18 @@ router.get('/', async (req, res, next) => {
     const db = getDbReference();
     const collection = db.collection("courses");
 
-    // implement pagination
-    // get number of records (courses)
-    const coursesNumber = await collection.countDocuments();
+    const filter = {};
+    if (req.query.subject) {
+        filter.subject = req.query.subject;
+    }
+    if (req.query.number) {
+        filter.number = req.query.number;
+    }
+    if (req.query.term) {
+        filter.term = req.query.term;
+    }
+
+    const coursesNumber = await collection.countDocuments(filter);
 
     /*
     * Compute page number based on optional query string parameter `page`.
@@ -43,8 +52,8 @@ router.get('/', async (req, res, next) => {
     // compute skip limit for MongoDB
     const skip = (page - 1) * numPerPage;
 
-    // Get records from MongoDB
-    const pageCourses = await collection.find()
+    // Get records from MongoDB with filter
+    const pageCourses = await collection.find(filter)
     .skip(skip)
     .limit(numPerPage)
     .toArray();

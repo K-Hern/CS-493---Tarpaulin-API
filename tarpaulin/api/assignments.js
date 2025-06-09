@@ -152,7 +152,15 @@ router.get('/:id/submissions', requireAuth, async (req, res, next) => {
   }
 
   try {
-    const submissions = await getAllSubmissionsByAssignmentId(req.params.id)
+    let submissions = await getAllSubmissionsByAssignmentId(req.params.id)
+    
+    if (req.query.studentId) {
+      const studentId = parseInt(req.query.studentId);
+      submissions = submissions ? submissions.filter(sub => 
+        sub.metadata && sub.metadata.studentId === studentId
+      ) : [];
+    }
+    
     const totalSubmissions = submissions ? submissions.length : 0
 
     let page = parseInt(req.query.page) || 1;
