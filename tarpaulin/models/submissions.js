@@ -12,7 +12,7 @@ const submissionsSchema = {
   assignmentId: { required: true },
   studentId: { required: true },
   timestamp: { required: true },
-  grade: { required: true },
+  grade: { required: false },
   file: { required: false }
 }
 exports.submissionsSchema = submissionsSchema
@@ -23,7 +23,6 @@ exports.submissionsSchema = submissionsSchema
  */
 async function deleteSubmission(id) {
   const bucket = getSubmissionsBucket();
-  // Must be the _id obj id
   await bucket.delete(new ObjectId(id));
   return
 }

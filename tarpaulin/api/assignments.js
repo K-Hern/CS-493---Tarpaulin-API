@@ -6,7 +6,7 @@ const { Router } = require('express')
 const multer = require('multer');
 const { submissions_storage } = require('../lib/mongo')
 const { assignmentsSchema, getAssignmentById, createNewAssignment, updateAssignment, deleteAssignmentById } = require('../models/assignments');
-const { submissionSchema, deleteSubmission, getSubmissionDetailsById, getSubmissionDownloadStreamById, getAllSubmissionsByAssignmentId } = require('../models/submissions');
+const { submissionsSchema, deleteSubmission, getSubmissionDetailsById, getSubmissionDownloadStreamById, getAllSubmissionsByAssignmentId } = require('../models/submissions');
 const { validateAgainstSchema } = require('../lib/validation');
 const { requireAdmin, requireCourseAccess, requireAssignmentSubmissionAccess, requireAuth } = require('../lib/auth_middleware');
 
@@ -189,63 +189,78 @@ router.get('/:id/submissions', requireAuth, async (req, res, next) => {
 // allows authorized student Users to upload a file submission for a specific assignment.
 // AUTH: Only an authenticated User with 'student' role who is enrolled in the Course corresponding to the Assignment's courseId can create a Submission.
 router.post('/:id/submissions', requireAssignmentSubmissionAccess, submission_upload.single('file'), async (req, res, next) => {
-  // return download link along with the rest of the information about the Submission from the GET /assignments/{id}/submissions endpoint.
   if (req.file) {
-    if (validateAgainstSchema(req.file.metadata, submissionSchema)){
-      res.status(201).send({
-        id: req.file.id,
-        links: {
-          download: `/assignments/history/${req.file.id}`,
-          assignment: `/assignments/${req.body.assignmentId}`
-        }
-      })
-    } else {
-      // The request body was either not present or did not contain a valid Submission object.
-      // File was alr uploaded by multer, must be deleted
-      await deleteSubmission(file.id)
-      res.status(400).send(_400_obj)
-    }
+    res.status(201).send({
+      id: req.file.id,
+      links: {
+        download: `/assignments/history/${req.file.id}`,
+        assignment: `/assignments/${req.params.id}`
+      }
+    })
+  } else {
+    res.status(400).json({ error: "No file uploaded" })
   }
 })
 
 // download a submission file by id
 // AUTH: must ensure the user requesting is the user this file belongs to
 router.get('/history/:id', requireAuth, async (req, res, next) => {
-  const file = await getSubmissionDetailsById(req.params.id)
-  if (!file){
-    return next();
-  }
-
-  if (req.user.role !== 'admin') {
-    if (req.user.role === 'student' && file.metadata.studentId !== req.user.id) {
-      return res.status(403).json({ error: "Cannot access other students' submissions" })
-    }
+  try {
+    const file = await getSubmissionDetailsById(req.params.id)
     
-    if (req.user.role === 'instructor') {
-      const { getAssignmentById } = require('../models/assignments')
-      const { getCourseDetailsById } = require('../models/courses')
-      try {
-        const assignment = await getAssignmentById(file.metadata.assignmentId)
-        if (assignment) {
-          const course = await getCourseDetailsById(assignment.courseId)
-          if (!course || course.instructorId !== req.user.id) {
-            return res.status(403).json({ error: "Cannot access submissions from courses you don't teach" })
+    if (!file){
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    if (req.user.role !== 'admin') {
+      if (req.user.role === 'student' && file.metadata.studentId !== req.user.id) {
+        return res.status(403).json({ error: "Cannot access other students' submissions" })
+      }
+      
+      if (req.user.role === 'instructor') {
+        const { getAssignmentById } = require('../models/assignments')
+        const { getCourseDetailsById } = require('../models/courses')
+        try {
+          const assignment = await getAssignmentById(file.metadata.assignmentId)
+          if (assignment) {
+            const course = await getCourseDetailsById(assignment.courseId)
+            if (!course || course.instructorId !== req.user.id) {
+              return res.status(403).json({ error: "Cannot access submissions from courses you don't teach" })
+            }
+          } else {
+            return res.status(404).json({ error: "Assignment not found" })
           }
-        } else {
-          return res.status(404).json({ error: "Assignment not found" })
+        } catch (err) {
+          console.error("File access check error:", err)
+          return res.status(500).send(_500_obj)
         }
-      } catch (err) {
-        console.error("File access check error:", err)
-        return res.status(500).send(_500_obj)
       }
     }
-  }
 
-  res.type(file.contentType)
-  res.status(200)
-  const download_stream = await getSubmissionDownloadStreamById(req.params.id, 'images')
-  download_stream.on('error', err => {res.status(400).send(`Error: ${err}`);});
-  return download_stream.pipe(res);
+    // Set content type from metadata, default to application/octet-stream if not available
+    const contentType = (file.metadata && file.metadata.mimeType) ? file.metadata.mimeType : 'application/octet-stream';
+    
+    if (contentType && typeof contentType === 'string') {
+      res.type(contentType);
+    } else {
+      res.type('application/octet-stream');
+    }
+    res.status(200);
+    
+    const download_stream = await getSubmissionDownloadStreamById(req.params.id);
+    
+    download_stream.on('error', err => {
+      console.error("Download stream error:", err);
+      if (!res.headersSent) {
+        res.status(500).send({ error: "Download failed" });
+      }
+    });
+    
+    return download_stream.pipe(res);
+  } catch (err) {
+    console.error("Error in file download:", err);
+    return res.status(500).send(_500_obj);
+  }
 })
 
 module.exports = router

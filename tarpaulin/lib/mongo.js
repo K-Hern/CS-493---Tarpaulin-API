@@ -1,6 +1,6 @@
-
 const { MongoClient, GridFSBucket } = require('mongodb');
 const { GridFsStorage } = require('multer-gridfs-storage');
+const multer = require('multer');
 
 const mongoHost = process.env.MONGO_HOST || 'localhost'
 const mongoPort = process.env.MONGO_PORT || 27017
@@ -38,11 +38,12 @@ exports.submissions_storage = new GridFsStorage({
     return {
       bucketName: submissionsBucketName,
       metadata:{
-        assignmentId: req.body.assignmentId,
-        studentId: req.body.studentId,
-        timestamp: req.body.timestamp,
-        grade: req.body.grade,
-        mimeType: file.mimetype 
+        assignmentId: parseInt(req.params.id),
+        studentId: req.user ? req.user.id : null,
+        timestamp: new Date().toISOString(),
+        grade: null,
+        mimeType: file.mimetype,
+        originalName: file.originalname
       }
     };
   }
