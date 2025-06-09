@@ -46,7 +46,8 @@ router.post('/', requireAuth, async (req, res, next) => {
 })
 
 // Fetch data about a specific Assignment.
-router.get('/:id', async (req, res, next) => {
+// AUTH: Only authenticated users can view assignment details
+router.get('/:id', requireAuth, async (req, res, next) => {
   const assignment = await getAssignmentById(req.params.id);
   if (assignment){
     res.status(200).send(assignment)
@@ -211,16 +212,40 @@ router.post('/:id/submissions', requireAssignmentSubmissionAccess, submission_up
 // AUTH: must ensure the user requesting is the user this file belongs to
 router.get('/history/:id', requireAuth, async (req, res, next) => {
   const file = await getSubmissionDetailsById(req.params.id)
-  if (file){
-    res.type(file.contentType)
-    res.status(200)
-    const download_stream = await getSubmissionDownloadStreamById(req.params.id, 'images')
-    download_stream.on('error', err => {res.status(400).send(`Error: ${err}`);});
-    return download_stream.pipe(res);
-  } else {
+  if (!file){
     return next();
-  } 
+  }
 
+  if (req.user.role !== 'admin') {
+    if (req.user.role === 'student' && file.metadata.studentId !== req.user.id) {
+      return res.status(403).json({ error: "Cannot access other students' submissions" })
+    }
+    
+    if (req.user.role === 'instructor') {
+      const { getAssignmentById } = require('../models/assignments')
+      const { getCourseDetailsById } = require('../models/courses')
+      try {
+        const assignment = await getAssignmentById(file.metadata.assignmentId)
+        if (assignment) {
+          const course = await getCourseDetailsById(assignment.courseId)
+          if (!course || course.instructorId !== req.user.id) {
+            return res.status(403).json({ error: "Cannot access submissions from courses you don't teach" })
+          }
+        } else {
+          return res.status(404).json({ error: "Assignment not found" })
+        }
+      } catch (err) {
+        console.error("File access check error:", err)
+        return res.status(500).send(_500_obj)
+      }
+    }
+  }
+
+  res.type(file.contentType)
+  res.status(200)
+  const download_stream = await getSubmissionDownloadStreamById(req.params.id, 'images')
+  download_stream.on('error', err => {res.status(400).send(`Error: ${err}`);});
+  return download_stream.pipe(res);
 })
 
 module.exports = router

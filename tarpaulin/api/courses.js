@@ -144,24 +144,33 @@ router.get('/:id/students', requireCourseAccess, async (req, res, next) => {
 })
 
 // Update enrollment for a Course.
+// AUTH: Only admin or course instructor can update enrollment
 router.post('/:id/students', requireCourseAccess, async (req, res, next) => {
   const course = await getCourseDetailsById(req.params.id);
-  if (course){
-    if (req.body.add || req.body.remove){
-      let result = course.students;
-      if (req.body.remove){
-        const toRemove = new Set(req.body.remove);
-        result = course.students.filter(indStud => !toRemove.has(indStud));
-      }
-      if (req.body.add){
-        req.body.add.map((newStud)=>result.push(newStud))
-      }
-      updateCourse(course.id, {students: result})
-    } else {
-      res.status(400).send(_400_obj)
+  if (!course){
+    return next();
+  }
+
+  if (req.body.add || req.body.remove){
+    let result = course.students || [];
+    if (req.body.remove){
+      const toRemove = new Set(req.body.remove);
+      result = result.filter(indStud => !toRemove.has(indStud));
+    }
+    if (req.body.add){
+      const uniqueNewStudents = req.body.add.filter(newStud => !result.includes(newStud));
+      result = result.concat(uniqueNewStudents);
+    }
+    
+    try {
+      await updateCourse(req.params.id, {students: result});
+      res.status(200).send();
+    } catch (err) {
+      console.error("Error updating course enrollment:", err);
+      res.status(500).send(_500_obj);
     }
   } else {
-    return next();
+    res.status(400).send(_400_obj);
   }
 })
 
