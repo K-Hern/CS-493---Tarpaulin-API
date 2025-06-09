@@ -1,6 +1,7 @@
 const { getDbReference } = require('../lib/mongo')
 const { deleteAllSubmissionsByAssignmentId } = require('./submissions')
 const { getNextSequenceValue } = require('../lib/idGenerator')
+const { extractValidFields } = require('../lib/validation')
 const assignmentsCollection = 'assignments';
 exports.assignmentsCollection = assignmentsCollection
 
