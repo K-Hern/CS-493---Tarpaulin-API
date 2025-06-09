@@ -5,8 +5,8 @@
 const { Router } = require('express')
 const multer = require('multer');
 const { submissions_storage } = require('../lib/mongo')
-const { getSubmissionDetailsById, getSubmissionDownloadStreamById, assignmentsSchema, getAssignmentById, createNewAssignment, updateAssignment, deleteAssignmentById, getAllSubmissionsByAssignmentId } = require('../models/assignments');
-const { submissionSchema, deleteSubmission } = require('../models/submissions');
+const { assignmentsSchema, getAssignmentById, createNewAssignment, updateAssignment, deleteAssignmentById } = require('../models/assignments');
+const { submissionSchema, deleteSubmission, getSubmissionDetailsById, getSubmissionDownloadStreamById, getAllSubmissionsByAssignmentId } = require('../models/submissions');
 const { validateAgainstSchema } = require('../lib/validation');
 const { requireAdmin, requireCourseAccess, requireAssignmentSubmissionAccess, requireAuth } = require('../lib/auth_middleware');
 
@@ -24,7 +24,6 @@ router.post('/', requireAuth, async (req, res, next) => {
     return res.status(400).send(_400_obj)
   }
 
-  // Check if user can create assignment for this course
   if (req.user.role !== 'admin') {
     if (req.user.role !== 'instructor') {
       return res.status(403).json({ error: "Instructor access required" })
@@ -63,7 +62,6 @@ router.get('/:id', async (req, res, next) => {
 router.patch('/:id', requireAuth, async (req, res, next) => {
   const assignment = await getAssignmentById(req.params.id)
   if (!assignment){
-    // assignment DNE - 404
     return next();
   }
 
@@ -104,7 +102,6 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
     return next();
   }
 
-  // Check if user can delete this assignment
   if (req.user.role !== 'admin') {
     if (req.user.role !== 'instructor') {
       return res.status(403).json({ error: "Instructor access required" })
@@ -136,7 +133,6 @@ router.get('/:id/submissions', requireAuth, async (req, res, next) => {
     return next();
   }
 
-  // Check if user can view submissions for this assignment
   if (req.user.role !== 'admin') {
     if (req.user.role !== 'instructor') {
       return res.status(403).json({ error: "Instructor access required" })
@@ -154,15 +150,38 @@ router.get('/:id/submissions', requireAuth, async (req, res, next) => {
     }
   }
 
-  // **************** Must still be paginated *****************
-  const submissionsList = []
-  const submissions = await getAllSubmissionsByAssignmentId(req.params.id)
-  submissions.map((subObj)=>{
-    subObj.metadata.file = `assignments/history/${subObj._id}`
-    submissionsList.push(subObj.metadata)
-  })
+  try {
+    const submissions = await getAllSubmissionsByAssignmentId(req.params.id)
+    const totalSubmissions = submissions ? submissions.length : 0
 
-  return res.status(200).send({submission: submissionsList});
+    let page = parseInt(req.query.page) || 1;
+    const numPerPage = 10;
+    const lastPage = Math.max(1, Math.ceil(totalSubmissions / numPerPage));
+    page = page > lastPage ? lastPage : page;
+    page = page < 1 ? 1 : page;
+
+    const skip = (page - 1) * numPerPage;
+    const paginatedSubmissions = submissions ? submissions.slice(skip, skip + numPerPage) : [];
+
+    const submissionsList = []
+    paginatedSubmissions.map((subObj)=>{
+      if (subObj && subObj.metadata) {
+        subObj.metadata.file = `assignments/history/${subObj._id}`
+        submissionsList.push(subObj.metadata)
+      }
+    })
+
+    return res.status(200).send({
+      submissions: submissionsList,
+      page: page,
+      totalPages: lastPage,
+      pageSize: numPerPage,
+      totalCount: totalSubmissions
+    });
+  } catch (err) {
+    console.error("Error fetching submissions:", err)
+    return res.status(500).send(_500_obj)
+  }
 })
 
 // create a new submission
@@ -186,7 +205,6 @@ router.post('/:id/submissions', requireAssignmentSubmissionAccess, submission_up
       res.status(400).send(_400_obj)
     }
   }
-    // OR auth ERROR: res.status(403).send({error: "string"})
 })
 
 // download a submission file by id
@@ -200,7 +218,6 @@ router.get('/history/:id', requireAuth, async (req, res, next) => {
     download_stream.on('error', err => {res.status(400).send(`Error: ${err}`);});
     return download_stream.pipe(res);
   } else {
-    // DNE - 404
     return next();
   } 
 

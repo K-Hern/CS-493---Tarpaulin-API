@@ -57,7 +57,7 @@ exports.deleteAllSubmissionsByAssignmentId = deleteAllSubmissionsByAssignmentId
  */
 async function getAllSubmissionsByAssignmentId(assignmentId) {
   const db = getDbReference();
-  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': ParseInt(assignmentId) }).toArray();
+  const submissionFiles = await db.collection(submissionsMetadataCollection).find({ 'metadata.assignmentId': parseInt(assignmentId) }).toArray();
   return submissionFiles
 }
 exports.getAllSubmissionsByAssignmentId = getAllSubmissionsByAssignmentId
