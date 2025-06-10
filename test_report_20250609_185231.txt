@@ -1,0 +1,261 @@
+Tarpaulin API Comprehensive Test Report
+Generated: Mon Jun  9 18:52:31 PDT 2025
+=======================================
+
+====== API HEALTH CHECK ======
+[TEST] Basic API connectivity
+[PASS] Basic API connectivity - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]},{"_id":1,"subject":"MTH","number":"341","title":"Linear Al
+
+====== AUTHENTICATION TESTS ======
+[TEST] Student authentication
+[PASS] Student authentication - Token obtained
+[TEST] Instructor authentication
+[PASS] Instructor authentication - Token obtained
+[TEST] Admin authentication
+[PASS] Admin authentication - Token obtained
+[TEST] Invalid login credentials
+[PASS] Invalid login credentials - Status: 401
+{"error":"Invalid credentials"}
+
+[TEST] Malformed login request
+[PASS] Malformed login request - Status: 400
+{"error":"Malformed Request"}
+
+
+====== COURSE ENDPOINTS ======
+[TEST] Get all courses
+[PASS] Get all courses - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]},{"_id":1,"subject":"MTH","number":"341","title":"Linear Al
+[TEST] Get specific course
+[PASS] Get specific course - Status: 200
+{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]}
+
+[TEST] Get non-existent course (404 test)
+[PASS] Get non-existent course (404 test) - Status: 404
+{"error":"Requested resource /courses/99999 does not exist"}
+
+[TEST] Course pagination
+[PASS] Course pagination - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]},{"_id":1,"subject":"MTH","number":"341","title":"Linear Al
+[TEST] Course subject filter
+[PASS] Course subject filter - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]},{"_id":2,"subject":"CS","number":"381","title":"Program La
+[TEST] Course number filter
+[PASS] Course number filter - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]}],"page":1,"totalPages":1,"pageSize":10,"totalCount":1}
+
+[TEST] Course term filter
+[PASS] Course term filter - Status: 200
+{"courses":[],"page":1,"totalPages":0,"pageSize":10,"totalCount":0}
+
+[TEST] Course multiple filters
+[PASS] Course multiple filters - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3]}],"page":1,"totalPages":1,"pageSize":10,"totalCount":1}
+
+
+====== AUTHORIZATION TESTS ======
+[TEST] Unauthorized course creation
+[PASS] Unauthorized course creation - Status: 401
+{"error":"Missing or malformed authorization header"}
+
+[TEST] Invalid token access
+[PASS] Invalid token access - Status: 401
+{"error":"Invalid token"}
+
+
+====== USER ENDPOINTS ======
+[TEST] Get student user details
+[PASS] Get student user details - Status: 200
+{"name":"Sarah Blemmins","email":"BlemminsS@oregonstate.edu","role":"student","courses":[0]}
+
+[TEST] Student accessing other user (should fail)
+[PASS] Student accessing other user (should fail) - Status: 403
+{"error":"Access denied"}
+
+[TEST] Get instructor user details
+[PASS] Get instructor user details - Status: 200
+{"name":"Clyde Smith","email":"SmithC@oregonstate.edu","role":"instructor","courses":[0,2]}
+
+[TEST] Get non-existent user
+[PASS] Get non-existent user - Status: 404
+{"error":"Requested resource /users/99999 does not exist"}
+
+
+====== INSTRUCTOR FUNCTIONALITY ======
+[TEST] Get course students as instructor
+[PASS] Get course students as instructor - Status: 200
+[1,3]
+
+[TEST] Get course roster as instructor
+[PASS] Get course roster as instructor - Status: 200
+1,"Sarah Blemmins","BlemminsS@oregonstate.edu" 3,"Griff Jennings","JenningsG@oregonstate.edu"
+
+[TEST] Get course assignments as instructor
+[PASS] Get course assignments as instructor - Status: 200
+{"assignments":["/assignments/0"]}
+
+[TEST] Access other instructor's course (should fail)
+[PASS] Access other instructor's course (should fail) - Status: 403
+{"error":"Course access denied"}
+
+[TEST] Create assignment as instructor
+[PASS] Create assignment as instructor - Assignment ID: 4
+[TEST] Update course enrollment (add/remove students)
+[PASS] Update course enrollment (add/remove students) - Status: 200
+
+
+[TEST] Invalid enrollment update (missing add/remove)
+[PASS] Invalid enrollment update (missing add/remove) - Status: 400
+{"error":"Malformed Request"}
+
+
+====== ASSIGNMENT OPERATIONS ======
+[TEST] Student get assignment details
+[PASS] Student get assignment details - Status: 200
+{"_id":0,"courseId":0,"title":"Assignment 0","points":100,"due":"2022-06-14T17:00:00-07:00"}
+
+[TEST] Student get non-existent assignment
+[PASS] Student get non-existent assignment - Status: 404
+{"error":"Requested resource /assignments/99999 does not exist"}
+
+[TEST] Update assignment as instructor
+[PASS] Update assignment as instructor - Status: 200
+
+
+[TEST] Get assignment submissions as instructor
+[PASS] Get assignment submissions as instructor - Status: 200
+{"submissions":[],"page":1,"totalPages":1,"pageSize":10,"totalCount":0}
+
+[TEST] Get assignment submissions with pagination
+[PASS] Get assignment submissions with pagination - Status: 200
+{"submissions":[],"page":1,"totalPages":1,"pageSize":10,"totalCount":0}
+
+[TEST] Get assignment submissions filtered by student
+[PASS] Get assignment submissions filtered by student - Status: 200
+{"submissions":[],"page":1,"totalPages":1,"pageSize":10,"totalCount":0}
+
+[TEST] Student create assignment (should fail)
+[PASS] Student create assignment (should fail) - Status: 403
+{"error":"Instructor access required"}
+
+[TEST] Student access assignment submissions (should fail)
+[PASS] Student access assignment submissions (should fail) - Status: 403
+{"error":"Instructor access required"}
+
+
+====== FILE SUBMISSION TESTS ======
+[TEST] Student file submission
+[PASS] Student file submission - Submission ID: 684790b267f0889cc2d7c270
+[TEST] Submission without file (should fail)
+[PASS] Submission without file (should fail) - Status: 400
+{"error":"No file uploaded"}
+
+[TEST] Submission to non-existent assignment
+[PASS] Submission to non-existent assignment - Status: 403
+{"error":"Assignment submission access denied"}
+
+[TEST] Student download own submission
+[PASS] Student download own submission - Status: 200
+This is a test submission file 
+
+[TEST] Instructor download student submission
+[PASS] Instructor download student submission - Status: 200
+This is a test submission file 
+
+
+====== COURSE MANAGEMENT (ADMIN) ======
+[TEST] Create course as admin
+[PASS] Create course as admin - Course ID: 5
+[TEST] Update course as admin
+[PASS] Update course as admin - Status: 200
+
+
+[TEST] Delete course as admin
+[PASS] Delete course as admin - Status: 204
+
+
+[TEST] Invalid course creation (missing fields)
+[PASS] Invalid course creation (missing fields) - Status: 400
+{"error":"Request body is not a valid course object"}
+
+
+====== USER MANAGEMENT (ADMIN) ======
+[TEST] Create user as admin
+[PASS] Create user as admin - User ID: 203
+[TEST] Create instructor user as admin
+[PASS] Create instructor user as admin - Status: 201
+{"id":204}
+
+[TEST] Create admin user as admin
+[PASS] Create admin user as admin - Status: 201
+{"id":205}
+
+[TEST] Invalid user creation (missing fields)
+[PASS] Invalid user creation (missing fields) - Status: 400
+{"error":"Malformed Request"}
+
+[TEST] Duplicate email user creation
+[PASS] Duplicate email user creation - Status: 201
+{"id":206}
+
+[TEST] Instructor create user (should fail)
+[PASS] Instructor create user (should fail) - Status: 403
+{"error":"Admin access required"}
+
+
+====== ASSIGNMENT CLEANUP ======
+[TEST] Delete assignment as instructor
+[PASS] Delete assignment as instructor - Status: 204
+
+
+[TEST] Access deleted assignment (should fail)
+[PASS] Access deleted assignment (should fail) - Status: 404
+{"error":"Requested resource /assignments/4 does not exist"}
+
+
+====== EDGE CASES AND ERROR HANDLING ======
+[TEST] Invalid endpoint
+[PASS] Invalid endpoint - Status: 404
+{"error":"Requested resource /invalid/endpoint does not exist"}
+
+[TEST] Invalid HTTP method on course endpoint
+[PASS] Invalid HTTP method on course endpoint - Status: 404
+{"error":"Requested resource /courses does not exist"}
+
+[TEST] Malformed JSON in request body
+[PASS] Malformed JSON in request body - Status: 400
+<!DOCTYPE html> <html lang="en"> <head> <meta charset="utf-8"> <title>Error</title> </head> <body> <pre>SyntaxError: Unexpected end of JSON input<br> &nbsp; &nbsp;at JSON.parse (&lt;anonymous&gt;)<br>
+[TEST] Missing Content-Type header
+[PASS] Missing Content-Type header - Status: 400
+{"error":"Request body is not a valid course object"}
+
+[TEST] Large page number in courses
+[PASS] Large page number in courses - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3,50]},{"_id":1,"subject":"MTH","number":"341","title":"Linear
+[TEST] Negative page number in courses
+[PASS] Negative page number in courses - Status: 200
+{"courses":[{"_id":0,"subject":"CS","number":"493","title":"Cloud Application Development","term":"sp22","instructorId":100,"students":[1,3,50]},{"_id":1,"subject":"MTH","number":"341","title":"Linear
+[TEST] Special characters in subject filter
+[PASS] Special characters in subject filter - Status: 200
+{"courses":[],"page":1,"totalPages":0,"pageSize":10,"totalCount":0}
+
+
+====== TEST SUMMARY ======
+
+====== FINAL SUMMARY ======
+Total Tests: 59
+Passed: 59
+Failed: 0
+Success Rate: 100%
+
+Authentication Status:
+  Student Token: ✓ ValideyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInVzZXIiOiJCbGVtbWluc1NAb3JlZ29uc3RhdGUuZWR1Iiwicm9sZSI6InN0dWRlbnQiLCJpYXQiOjE3NDk1MjAzNTcsImV4cCI6MTc0OTYwNjc1N30.O-smY6jAeIvlJpwwjajsWHwLIIn6dL2ziUcwXb7y128
+  Instructor Token: ✓ ValideyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEwMCwidXNlciI6IlNtaXRoQ0BvcmVnb25zdGF0ZS5lZHUiLCJyb2xlIjoiaW5zdHJ1Y3RvciIsImlhdCI6MTc0OTUyMDM2MywiZXhwIjoxNzQ5NjA2NzYzfQ.5eLhLk1l_vF1K2GqDczMUyxrftxZACPzCi3Bndd6jkM
+  Admin Token: ✓ ValideyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIwMCwidXNlciI6IkRhdmlzTUBvcmVnb25zdGF0ZS5lZHUiLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3NDk1MjAzNjksImV4cCI6MTc0OTYwNjc2OX0.Gb82NcainXXALLQoLKu7PfILK01v_sJ5W13w4jiRCBU
+
+Created Resources:
+  Assignment ID: 4
+  Course ID: 5
+  User ID: 203
+  Submission ID: 684790b267f0889cc2d7c270
